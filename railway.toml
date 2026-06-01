@@ -1,0 +1,89 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# railway.toml  —  Railway deployment configuration
+# Store Intelligence System
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Services defined here
+# ─────────────────────
+#   api        FastAPI backend (primary service, public port 8000)
+#   pipeline   CV detection pipeline (no inbound port needed)
+#   dashboard  Rich TUI (no inbound port; optional; runs as one-shot container)
+#
+# Secrets required in Railway dashboard (Settings → Variables)
+# ─────────────────────────────────────────────────────────────
+#   DATABASE_URL              postgresql+asyncpg://user:pass@host:5432/storedb
+#   KAFKA_BOOTSTRAP_SERVERS   kafka-broker-host:9092          (or Upstash URL)
+#   REDIS_URL                 redis://user:pass@host:6379     (or Upstash URL)
+#   SECRET_KEY                random 32-char string for JWT (if auth added)
+#
+# Usage
+# ─────
+#   railway up           # deploy all services
+#   railway logs -s api  # tail API logs
+
+[build]
+  # Root build command (overridden per-service below)
+  builder = "DOCKERFILE"
+
+# ── API service ───────────────────────────────────────────────────────────────
+[[services]]
+  name           = "api"
+  dockerfile     = "Dockerfile.api"
+  rootDirectory  = "."
+
+  [services.deploy]
+    startCommand  = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2 --proxy-headers --forwarded-allow-ips '*'"
+    restartPolicy = "on-failure"
+    numReplicas   = 1
+
+  [services.healthcheck]
+    path     = "/health"
+    timeout  = 5
+    interval = 30
+
+  [services.ports]
+    http = "$PORT"         # Railway injects $PORT automatically
+
+  # Environment variables — values are set via Railway secrets/variables.
+  # Listing them here documents what the service expects.
+  [services.variables]
+    ENVIRONMENT            = "production"
+    LOG_LEVEL              = "INFO"
+    DATABASE_URL           = "${{DATABASE_URL}}"
+    KAFKA_BOOTSTRAP_SERVERS = "${{KAFKA_BOOTSTRAP_SERVERS}}"
+    KAFKA_TOPIC            = "store_events"
+    REDIS_URL              = "${{REDIS_URL}}"
+    REDIS_STREAM_KEY       = "store_events_fallback"
+    DASHBOARD_MODE         = "API"
+
+# ── Pipeline service ──────────────────────────────────────────────────────────
+[[services]]
+  name          = "pipeline"
+  dockerfile    = "Dockerfile.pipeline"
+  rootDirectory = "."
+
+  [services.deploy]
+    startCommand  = "python -m pipeline.simulate --store-id STORE_PRP_001 --layout data/store_layout.json --api-url $API_URL --visitors 200 --speed 10"
+    restartPolicy = "on-failure"
+    numReplicas   = 1
+
+  [services.variables]
+    API_URL      = "${{api.RAILWAY_PUBLIC_DOMAIN}}"  # auto-resolved by Railway
+    DATABASE_URL = "${{DATABASE_URL}}"
+    LOG_LEVEL    = "WARNING"
+
+# ── Dashboard service (optional; TUI via logs) ────────────────────────────────
+[[services]]
+  name          = "dashboard"
+  dockerfile    = "Dockerfile.dashboard"
+  rootDirectory = "."
+
+  [services.deploy]
+    startCommand  = "python -m dashboard.terminal_dashboard --store-id STORE_PRP_001 --api-url $API_URL"
+    restartPolicy = "on-failure"
+    numReplicas   = 1
+
+  [services.variables]
+    API_URL        = "${{api.RAILWAY_PUBLIC_DOMAIN}}"
+    DASHBOARD_MODE = "TUI"   # force polling fallback (no PTY in Railway)
+    LOG_LEVEL      = "WARNING"
