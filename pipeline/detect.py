@@ -16,7 +16,7 @@ Usage (legacy single-directory scan):
         --layout data/store_layout.json \\
         --api-url http://localhost:8000
 
-Model: YOLOv8s (CPU-capable, good occlusion handling with ByteTrack).
+Model: YOLOv8m (balances accuracy and speed with better occlusion handling).
 Frame skip: configurable per clip (default 6 = 30fps → 5fps effective).
 """
 from __future__ import annotations
@@ -77,7 +77,7 @@ def process_clip(
     layout_path: str,
     emitter: EventEmitter,
     model,
-    reid_manager = HybridReIDManager(reentry_window_s=300), 
+    reid_manager: HybridReIDManager,
     billing_queue: list,
     clip_start_time: Optional[datetime] = None,
     confidence_threshold: float = 0.35,
@@ -159,7 +159,7 @@ def run_from_config(
     with open(clips_config_path, encoding="utf-8") as f:
         config = json.load(f)
 
-       with KafkaEventEmitter(bootstrap_servers="localhost:9092", topic=f"store-events") as emitter:
+    with KafkaEventEmitter(bootstrap_servers="localhost:9092", topic=f"store-events") as emitter:
         model = _load_model(model_name)
 
         for store_cfg in config.get("stores", []):
