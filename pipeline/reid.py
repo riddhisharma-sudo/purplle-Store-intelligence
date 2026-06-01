@@ -1,178 +1,304 @@
 """
-Re-ID manager for cross-camera deduplication and re-entry detection.
+pipeline/reid.py
+────────────────
+Hybrid Re-Identification engine that combines:
+  • HSV histogram-based staff filter  (fast, CPU-only)
+  • LAB colour-space embedding distance for visitor Re-ID
+  • Cross-camera deduplication via a shared ReIDManager instance
+  • Re-entry detection (visitor re-enters within TTL window)
+  • Weighted confidence score merging both signals
 
-Approach:
-- Extract a compact appearance descriptor (normalised histogram in LAB space)
-  from each tracked bounding box.
-- When a track disappears, store its descriptor + timestamp in a short-term gallery.
-- When a new track appears, compare its descriptor to the gallery via cosine similarity.
-- If similarity > threshold AND time gap is within the re-entry window → REENTRY.
-- For cross-camera matching, the same gallery is shared across all cameras of a store.
+Usage
+─────
+    manager = ReIDManager(staff_hsv_model_path="data/staff_hsv.json")
+    result  = manager.identify(crop_bgr, camera_id="CAM_FLOOR_01")
+    # result.visitor_id, result.is_staff, result.is_reentry, result.confidence
 """
+
 from __future__ import annotations
 
-import hashlib
+import json
 import logging
 import time
 from collections import OrderedDict
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
+import cv2
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-SIMILARITY_THRESHOLD = 0.82   # cosine similarity above which tracks are the same person
-GALLERY_TTL_S = 300           # 5 minutes — keep exited descriptors this long
+# ── Tunable thresholds ─────────────────────────────────────────────────────────
+LAB_COSINE_THRESHOLD   = 0.82   # minimum similarity to call a re-entry match
+HSV_CHI_THRESHOLD      = 0.35   # maximum chi² distance to flag as staff uniform
+GALLERY_TTL_SECONDS    = 300    # how long exited descriptors are kept
+LAB_WEIGHT             = 0.65   # contribution of LAB score to merged confidence
+HSV_WEIGHT             = 0.35   # contribution of (inverted) HSV distance
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Data structures
+# ══════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class ReIDResult:
+    visitor_id:  str
+    is_staff:    bool
+    is_reentry:  bool
+    confidence:  float          # 0.0–1.0 merged score
 
 
 @dataclass
-class GalleryEntry:
-    visitor_id: str
-    descriptor: np.ndarray
-    exited_at: float          # monotonic time
-    last_zone: Optional[str] = None
+class _GalleryEntry:
+    visitor_id:  str
+    descriptor:  np.ndarray     # L1-normalised 96-dim LAB histogram
+    timestamp:   float          # unix time of last sighting
+    camera_id:   str
 
 
-def _extract_descriptor(frame: np.ndarray, bbox: tuple[int, int, int, int]) -> Optional[np.ndarray]:
+# ══════════════════════════════════════════════════════════════════════════════
+# LAB descriptor helpers
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _extract_lab_histogram(bgr_crop: np.ndarray) -> np.ndarray:
     """
-    32-bin LAB histogram over the bounding box (fast, lighting-invariant).
-    Returns a unit-norm vector of shape (96,).
+    Build a 96-dim LAB colour histogram from a bounding-box crop.
+
+    Channel bins: L→32, A→32, B→32.
+    Vectors are L2-normalised so cosine similarity == dot product.
     """
-    try:
-        import cv2
-        x1, y1, x2, y2 = bbox
-        crop = frame[y1:y2, x1:x2]
-        if crop.size == 0 or crop.shape[0] < 8 or crop.shape[1] < 8:
-            return None
-        lab = cv2.cvtColor(crop, cv2.COLOR_BGR2LAB)
-        hists = []
-        for ch in range(3):
-            h = cv2.calcHist([lab], [ch], None, [32], [0, 256])
-            hists.append(h.flatten())
-        descriptor = np.concatenate(hists).astype(np.float32)
-        norm = np.linalg.norm(descriptor)
-        if norm == 0:
-            return None
-        return descriptor / norm
-    except Exception as exc:
-        logger.debug("descriptor_extraction_failed error=%s", exc)
-        return None
+    if bgr_crop is None or bgr_crop.size == 0:
+        return np.zeros(96, dtype=np.float32)
+
+    lab = cv2.cvtColor(bgr_crop, cv2.COLOR_BGR2LAB)
+
+    hist_l = cv2.calcHist([lab], [0], None, [32], [0, 256]).flatten()
+    hist_a = cv2.calcHist([lab], [1], None, [32], [0, 256]).flatten()
+    hist_b = cv2.calcHist([lab], [2], None, [32], [0, 256]).flatten()
+
+    descriptor = np.concatenate([hist_l, hist_a, hist_b]).astype(np.float32)
+
+    # ── L2 normalisation (unit vector → cosine sim = dot product) ─────────────
+    norm = np.linalg.norm(descriptor)
+    if norm > 1e-6:
+        descriptor /= norm
+
+    return descriptor
 
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    return float(np.dot(a, b))  # both are already unit-norm
+    """Dot product of two L2-normalised vectors (equivalent to cosine similarity)."""
+    return float(np.dot(a, b))
 
 
-def _short_visitor_id(seed: str) -> str:
-    """Generate a short, stable visitor ID from a seed string."""
-    h = hashlib.sha256(seed.encode()).hexdigest()[:6]
-    return f"VIS_{h}"
+# ══════════════════════════════════════════════════════════════════════════════
+# HSV staff-filter helpers
+# ══════════════════════════════════════════════════════════════════════════════
 
+def _extract_hsv_histogram(bgr_crop: np.ndarray) -> np.ndarray:
+    """
+    Extract an HSV histogram from the lower 2/3 of the bounding box
+    (clothing region) — 64 H-bins, 32 S-bins → 96 dims.
+    Normalised to [0, 1].
+    """
+    if bgr_crop is None or bgr_crop.size == 0:
+        return np.zeros(96, dtype=np.float32)
+
+    h, w = bgr_crop.shape[:2]
+    clothing_region = bgr_crop[h // 3:, :]    # lower 2/3 of crop
+
+    hsv = cv2.cvtColor(clothing_region, cv2.COLOR_BGR2HSV)
+    hist_h = cv2.calcHist([hsv], [0], None, [64], [0, 180]).flatten()
+    hist_s = cv2.calcHist([hsv], [1], None, [32], [0, 256]).flatten()
+
+    descriptor = np.concatenate([hist_h, hist_s]).astype(np.float32)
+    total = descriptor.sum()
+    if total > 0:
+        descriptor /= total                    # probability distribution
+
+    return descriptor
+
+
+def _chi_squared_distance(p: np.ndarray, q: np.ndarray) -> float:
+    """
+    Chi-squared histogram distance — lower means more similar.
+    Handles zero bins safely.
+    """
+    denom = p + q + 1e-10
+    return float(np.sum((p - q) ** 2 / denom))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Main manager
+# ══════════════════════════════════════════════════════════════════════════════
 
 class ReIDManager:
     """
-    Maintains an appearance gallery shared across cameras for one store.
-    Thread-unsafe — call from a single pipeline process.
+    Shared Re-ID manager.  One instance covers all cameras in the same store
+    so that cross-camera deduplication works transparently.
+
+    Parameters
+    ──────────
+    staff_hsv_model_path : path to a JSON file mapping uniform name → HSV
+                           histogram list (length 96).  If absent, HSV staff
+                           filter is disabled gracefully.
     """
 
-    def __init__(self, reentry_window_s: int = 300):
-        self._gallery: OrderedDict[str, GalleryEntry] = OrderedDict()
-        self._reentry_window_s = reentry_window_s
-        # active_tracks: track_id (int) → visitor_id (str)
-        self._active: dict[int, str] = {}
-        # descriptor cache per active track (updated periodically)
-        self._track_descriptors: dict[int, np.ndarray] = {}
-        self._track_counters: dict[int, int] = {}  # increments each time we see a track
-
-    # ------------------------------------------------------------------
-    # Called every frame for each detected track
-    # ------------------------------------------------------------------
-
-    def register_or_match(
+    def __init__(
         self,
-        track_id: int,
-        frame: np.ndarray,
-        bbox: tuple[int, int, int, int],
-        _is_new_track: bool = False,
-    ) -> tuple[str, bool]:
+        staff_hsv_model_path: Optional[str] = None,
+        lab_threshold:   float = LAB_COSINE_THRESHOLD,
+        hsv_threshold:   float = HSV_CHI_THRESHOLD,
+        gallery_ttl:     float = GALLERY_TTL_SECONDS,
+    ) -> None:
+        self._lab_threshold  = lab_threshold
+        self._hsv_threshold  = hsv_threshold
+        self._gallery_ttl    = gallery_ttl
+
+        # Ordered-dict preserves insertion order → easy TTL eviction
+        self._gallery: OrderedDict[str, _GalleryEntry] = OrderedDict()
+        self._visitor_counter = 0
+
+        # Load staff HSV models
+        self._staff_histograms: List[np.ndarray] = []
+        if staff_hsv_model_path and Path(staff_hsv_model_path).exists():
+            self._load_staff_models(staff_hsv_model_path)
+
+    # ── Public API ─────────────────────────────────────────────────────────────
+
+    def identify(
+        self,
+        bgr_crop: np.ndarray,
+        camera_id: str = "unknown",
+    ) -> ReIDResult:
         """
-        Returns (visitor_id, is_reentry).
-        is_reentry=True means this visitor was seen before (crossed exit line then re-appeared).
+        Main entry point.  Given a bounding-box crop and its source camera,
+        returns a ReIDResult with visitor_id, staff flag, re-entry flag,
+        and a merged confidence score.
         """
-        self._track_counters[track_id] = self._track_counters.get(track_id, 0) + 1
-
-        if track_id in self._active:
-            # Update descriptor periodically (every 15 frames)
-            if self._track_counters[track_id] % 15 == 0:
-                desc = _extract_descriptor(frame, bbox)
-                if desc is not None:
-                    self._track_descriptors[track_id] = desc
-            return self._active[track_id], False
-
-        # New track — try to match against gallery
-        desc = _extract_descriptor(frame, bbox)
-        if desc is not None:
-            self._track_descriptors[track_id] = desc
-            match = self._find_gallery_match(desc)
-            if match:
-                visitor_id = match.visitor_id
-                # Remove matched entry so it isn't matched again
-                self._gallery.pop(visitor_id, None)
-                self._active[track_id] = visitor_id
-                logger.debug("reentry_detected visitor=%s track=%d", visitor_id, track_id)
-                return visitor_id, True
-
-        # Brand-new visitor
-        visitor_id = _short_visitor_id(f"{track_id}_{time.monotonic()}")
-        self._active[track_id] = visitor_id
-        return visitor_id, False
-
-    # ------------------------------------------------------------------
-    # Called when a track is lost (disappeared from frame or crossed exit)
-    # ------------------------------------------------------------------
-
-    def retire_track(self, track_id: int, last_zone: Optional[str] = None) -> Optional[str]:
-        """Move track from active to gallery. Returns the visitor_id."""
-        visitor_id = self._active.pop(track_id, None)
-        if visitor_id is None:
-            return None
-        desc = self._track_descriptors.pop(track_id, None)
-        self._track_counters.pop(track_id, None)
-        if desc is not None:
-            self._gallery[visitor_id] = GalleryEntry(
-                visitor_id=visitor_id,
-                descriptor=desc,
-                exited_at=time.monotonic(),
-                last_zone=last_zone,
-            )
         self._evict_expired()
-        return visitor_id
 
-    def get_visitor_id(self, track_id: int) -> Optional[str]:
-        return self._active.get(track_id)
+        # ── Staff detection (fast path) ───────────────────────────────────────
+        hsv_hist  = _extract_hsv_histogram(bgr_crop)
+        is_staff, hsv_dist = self._is_staff(hsv_hist)
 
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
+        if is_staff:
+            return ReIDResult(
+                visitor_id=f"STAFF_{camera_id}",
+                is_staff=True,
+                is_reentry=False,
+                confidence=1.0 - (hsv_dist / self._hsv_threshold),
+            )
 
-    def _find_gallery_match(self, descriptor: np.ndarray) -> Optional[GalleryEntry]:
-        now = time.monotonic()
-        best_score = SIMILARITY_THRESHOLD
-        best_entry: Optional[GalleryEntry] = None
-        for entry in self._gallery.values():
-            age_s = now - entry.exited_at
-            if age_s > self._reentry_window_s:
-                continue
-            sim = _cosine_similarity(descriptor, entry.descriptor)
-            if sim > best_score:
-                best_score = sim
-                best_entry = entry
-        return best_entry
+        # ── Visitor Re-ID (LAB) ───────────────────────────────────────────────
+        lab_desc  = _extract_lab_histogram(bgr_crop)
+        best_id, lab_similarity = self._match_gallery(lab_desc)
+
+        is_reentry = lab_similarity >= self._lab_threshold
+        if is_reentry:
+            visitor_id = best_id
+        else:
+            visitor_id = self._new_visitor_id()
+
+        # ── Merged confidence ─────────────────────────────────────────────────
+        # HSV contribution: inverted normalised distance from threshold.
+        # LAB contribution: raw cosine similarity (0→1).
+        hsv_score = max(0.0, 1.0 - hsv_dist / max(self._hsv_threshold, 1e-6))
+        lab_score = max(0.0, lab_similarity)
+
+        merged_confidence = (
+            LAB_WEIGHT * lab_score +
+            HSV_WEIGHT * hsv_score
+        )
+        merged_confidence = float(np.clip(merged_confidence, 0.0, 1.0))
+
+        # ── Update gallery ────────────────────────────────────────────────────
+        self._gallery[visitor_id] = _GalleryEntry(
+            visitor_id=visitor_id,
+            descriptor=lab_desc,
+            timestamp=time.monotonic(),
+            camera_id=camera_id,
+        )
+
+        logger.debug(
+            "Re-ID: %s | camera=%s | reentry=%s | lab=%.3f | hsv_dist=%.3f | conf=%.3f",
+            visitor_id, camera_id, is_reentry, lab_similarity, hsv_dist, merged_confidence,
+        )
+
+        return ReIDResult(
+            visitor_id=visitor_id,
+            is_staff=False,
+            is_reentry=is_reentry,
+            confidence=merged_confidence,
+        )
+
+    def retire_track(self, visitor_id: str) -> None:
+        """
+        Called when a track is definitively lost or crosses the EXIT line.
+        Keeps the descriptor in the gallery for re-entry matching within TTL.
+        """
+        if visitor_id in self._gallery:
+            self._gallery[visitor_id].timestamp = time.monotonic()
+            logger.debug("Track retired: %s (held in gallery for re-entry)", visitor_id)
+
+    # ── Private helpers ────────────────────────────────────────────────────────
+
+    def _match_gallery(self, descriptor: np.ndarray) -> Tuple[str, float]:
+        """
+        Search active gallery for the closest LAB match.
+        Returns (visitor_id, cosine_similarity) of the best hit, or ("", 0.0).
+        """
+        best_id    = ""
+        best_score = 0.0
+
+        for vid, entry in self._gallery.items():
+            score = _cosine_similarity(descriptor, entry.descriptor)
+            if score > best_score:
+                best_score = score
+                best_id    = vid
+
+        return best_id, best_score
+
+    def _is_staff(self, hsv_hist: np.ndarray) -> Tuple[bool, float]:
+        """
+        Compare incoming HSV histogram against all loaded staff-uniform models.
+        Returns (is_staff, best_chi_squared_distance).
+        """
+        if not self._staff_histograms:
+            return False, float("inf")
+
+        best_dist = min(
+            _chi_squared_distance(hsv_hist, model)
+            for model in self._staff_histograms
+        )
+        return best_dist <= self._hsv_threshold, best_dist
+
+    def _new_visitor_id(self) -> str:
+        self._visitor_counter += 1
+        return f"VIS_{self._visitor_counter:06x}"
 
     def _evict_expired(self) -> None:
         now = time.monotonic()
-        expired = [k for k, v in self._gallery.items()
-                   if now - v.exited_at > GALLERY_TTL_S]
-        for k in expired:
-            del self._gallery[k]
+        to_remove = [
+            vid for vid, entry in self._gallery.items()
+            if (now - entry.timestamp) > self._gallery_ttl
+        ]
+        for vid in to_remove:
+            del self._gallery[vid]
+            logger.debug("Gallery evicted (TTL): %s", vid)
+
+    def _load_staff_models(self, path: str) -> None:
+        try:
+            with open(path) as fh:
+                data: Dict[str, List[float]] = json.load(fh)
+            for name, hist_list in data.items():
+                arr = np.array(hist_list, dtype=np.float32)
+                total = arr.sum()
+                if total > 0:
+                    arr /= total
+                self._staff_histograms.append(arr)
+                logger.info("Loaded staff HSV model: %s (%d bins)", name, len(arr))
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("Could not load staff HSV models from %s: %s", path, exc)
