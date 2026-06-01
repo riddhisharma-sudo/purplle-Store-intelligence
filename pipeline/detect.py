@@ -56,7 +56,7 @@ def _parse_start_time(ts_str: str) -> datetime:
         return datetime.now(tz=timezone.utc)
 
 
-def _load_model(model_name: str = "yolov8s.pt"):
+def _load_model(model_name: str = "yolov8m.pt"):
     try:
         from ultralytics import YOLO
         model = YOLO(model_name)
