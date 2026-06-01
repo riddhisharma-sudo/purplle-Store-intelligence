@@ -22,8 +22,11 @@
 #   railway logs -s api  # tail API logs
 
 [build]
-  # Root build command (overridden per-service below)
-  builder = "DOCKERFILE"
+  dockerfilePath = "Dockerfile.api"
+[deploy]
+  startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2 --proxy-headers"
+  healthcheckPath = "/health"
+  healthcheckTimeout = 30
 
 # ── API service ───────────────────────────────────────────────────────────────
 [[services]]
