@@ -37,6 +37,9 @@ from pipeline.reid import ReIDManager
 from pipeline.staff_detector import StaffDetector
 from pipeline.tracker import StoreTracker
 from pipeline.zone_mapper import ZoneMapper
+from pipeline.hybrid_reid import HybridReIDManager              # NEW
+from pipeline.advanced_staff_detector import AdvancedStaffDetector  # NEW
+from pipeline.kafka_emitter import KafkaEventEmitter           # NEW
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +77,7 @@ def process_clip(
     layout_path: str,
     emitter: EventEmitter,
     model,
-    reid_manager: ReIDManager,
+    reid_manager = HybridReIDManager(reentry_window_s=300), 
     billing_queue: list,
     clip_start_time: Optional[datetime] = None,
     confidence_threshold: float = 0.35,
@@ -98,7 +101,7 @@ def process_clip(
     )
 
     zone_mapper = ZoneMapper(layout_path, store_id, camera_id)
-    staff_detector = StaffDetector.from_layout(layout_path, store_id)
+    staff_detector = AdvancedStaffDetector(layout_path, store_id)
 
     tracker = StoreTracker(
         store_id=store_id,
@@ -156,7 +159,7 @@ def run_from_config(
     with open(clips_config_path, encoding="utf-8") as f:
         config = json.load(f)
 
-    with EventEmitter(api_url=api_url, output_file=output_file, batch_size=50) as emitter:
+       with KafkaEventEmitter(bootstrap_servers="localhost:9092", topic=f"store-events") as emitter:
         model = _load_model(model_name)
 
         for store_cfg in config.get("stores", []):
@@ -164,7 +167,7 @@ def run_from_config(
             clips_dir = Path(clips_dir_override or store_cfg.get("clips_dir", "CCTV Footage"))
 
             # Shared Re-ID + queue across cameras of the same store session
-            reid_manager = ReIDManager(reentry_window_s=300)
+            reid_manager = HybridReIDManager(reentry_window_s=300, hsv_weight=0.6, lab_weight=0.4)
             billing_queue: list[int] = []
 
             # Process clips in order specified (entry first, then floor, then billing)
@@ -220,9 +223,9 @@ def run_from_dir(
         logger.warning("no_clips_found dir=%s", clips_dir)
         return
 
-    with EventEmitter(api_url=api_url, output_file=output_file, batch_size=50) as emitter:
+    with KafkaEventEmitter(bootstrap_servers="localhost:9092", topic=f"store-events") as emitter:
         model = _load_model(model_name)
-        reid_manager = ReIDManager(reentry_window_s=300)
+        reid_manager = HybridReIDManager(reentry_window_s=300, hsv_weight=0.6, lab_weight=0.4)
         billing_queue: list[int] = []
 
         for clip_path in clip_files:
@@ -263,7 +266,7 @@ def main() -> None:
     parser.add_argument("--layout", default="data/store_layout.json")
     parser.add_argument("--api-url", default="http://localhost:8000")
     parser.add_argument("--output", default=None, help="Also write events to this JSONL file")
-    parser.add_argument("--model", default="yolov8s.pt")
+    parser.add_argument("--model", default="yolov8m.pt")
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--frame-skip", type=int, default=6)
 
