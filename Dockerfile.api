@@ -1,20 +1,87 @@
-FROM python:3.12-slim
+# ══════════════════════════════════════════════════════════════════════════════
+# Dockerfile.api  —  Multi-stage build for FastAPI (Store Intelligence API)
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Stages
+# ──────
+#  builder  : install all Python deps into a clean virtualenv
+#  runtime  : copy only the venv + app source; no build tools in final image
+#
+# Build
+# ─────
+#   docker build -f Dockerfile.api -t store-intelligence-api:latest .
+#
+# Run (local)
+# ───────────
+#   docker run -p 8000:8000 \
+#     -e DATABASE_URL=postgresql+asyncpg://user:pass@host/db \
+#     -e KAFKA_BOOTSTRAP_SERVERS=kafka:9092 \
+#     -e REDIS_URL=redis://redis:6379 \
+#     store-intelligence-api:latest
+
+# ── Stage 1: builder ──────────────────────────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /build
+
+# System deps needed to compile certain Python packages (psycopg2-binary, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create an isolated virtualenv so we can copy it cleanly to the runtime stage
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies first (layer-cached unless requirements change)
+COPY requirements.txt .
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+# ── Stage 2: runtime ──────────────────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
-# Install system deps
+# Only the runtime libraries needed at execution (libpq for asyncpg/psycopg2)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc \
+        libpq5 \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy virtualenv from builder stage
+COPY --from=builder /opt/venv /opt/venv
 
-COPY app/ ./app/
+# Copy application source
+COPY app/       ./app/
+COPY data/      ./data/
 
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
+# Non-root user for security best-practice
+RUN adduser --disabled-password --gecos "" appuser \
+    && chown -R appuser:appuser /app
+USER appuser
 
+# Expose application port
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Health check — Railway and Docker Compose both honour this
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Start Uvicorn with 2 workers (Railway single-core containers)
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "2", \
+     "--proxy-headers", \
+     "--forwarded-allow-ips", "*"]
+
