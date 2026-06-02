@@ -312,29 +312,40 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A["POST /events/ingest\nbatch ≤ 500 events"] --> B["Deduplication\nquery event_id\nvs PostgreSQL"]
-    B --> C{"Novel\nevents?"}
+    A["POST /events/ingest\n≤ 500 events"] --> B["Deduplication\ncheck event_id in PostgreSQL"]
+    B --> C{"Novel events?"}
     C -->|"All duplicates"| D["Return 202\n0 accepted"]
-    C -->|"Novel batch"| E["Try Kafka Broker\naiokafka AIOKafkaProducer"]
+    C -->|"Novel batch"| E["Kafka Broker\naiokafka producer"]
 
-    E --> F{"Attempt 1\nsend_and_wait"}
-    F -->|"Success"| G["bus = kafka\nlog sent count"]
-    F -->|"KafkaError"| H["Backoff 0.5s\nAttempt 2"]
+    E --> F{"Attempt 1"}
+    F -->|"Success"| G["bus = kafka\n✅ sent"]
+    F -->|"Error"| H["Backoff 0.5s → Attempt 2"]
     H -->|"Success"| G
-    H -->|"KafkaError"| I["Backoff 1.0s\nAttempt 3"]
+    H -->|"Error"| I["Backoff 1.0s → Attempt 3"]
     I -->|"Success"| G
-    I -->|"Exhausted"| J["Redis Streams Fallback\naioredis XADD pipeline\nbus = redis"]
+    I -->|"Error (exhausted)"| J["Redis Streams Fallback\naioredis XADD\nbus = redis"]
 
-    G & J --> K["Persist to PostgreSQL\nSQLAlchemy db.add_all\nawait db.commit"]
-    K -->|"DB error"| L["Return 500\nevents on bus\nbut DB failed"]
-    K -->|"Success"| M["Return 202\naccepted + bus used\n+ duplicate count"]
+    G & J --> K["Persist to PostgreSQL\ncommit novel events"]
+    K -->|"DB error"| L["Return 500\nbus ok but DB failed"]
+    K -->|"Success"| M["Return 202\naccepted + bus used\n+ duplicates"]
 
     J -->|"Redis also fails"| N["Return 503\nboth buses down"]
 
-    style G fill:#065f46,color:#fff
-    style J fill:#92400e,color:#fff
-    style N fill:#7f1d1d,color:#fff
-    style D fill:#374151,color:#aaa
+    %% --- Custom Styles ---
+    style A fill:#2563eb,color:#fff,stroke:#1e40af
+    style B fill:#38bdf8,color:#000,stroke:#0ea5e9
+    style C fill:#facc15,color:#000,stroke:#ca8a04
+    style D fill:#9ca3af,color:#000,stroke:#4b5563
+    style E fill:#f97316,color:#fff,stroke:#c2410c
+    style F fill:#fde68a,color:#000,stroke:#ca8a04
+    style G fill:#22c55e,color:#fff,stroke:#15803d
+    style H fill:#fcd34d,color:#000,stroke:#b45309
+    style I fill:#fbbf24,color:#000,stroke:#92400e
+    style J fill:#eab308,color:#000,stroke:#854d0e
+    style K fill:#06b6d4,color:#fff,stroke:#0e7490
+    style L fill:#ef4444,color:#fff,stroke:#991b1b
+    style M fill:#10b981,color:#fff,stroke:#065f46
+    style N fill:#7f1d1d,color:#fff,stroke:#450a0a
 
 ```
 
