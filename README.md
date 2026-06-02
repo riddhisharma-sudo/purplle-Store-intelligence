@@ -130,7 +130,7 @@ This platform introduces several edge-native optimizations designed to eliminate
 ---
 
 ## 6. System Architecture
-
+```mermaid
 flowchart TD
 
     subgraph Client["Client Applications"]
@@ -168,7 +168,8 @@ flowchart TD
     API --> DB
     API --> Background
     Background --> DB
-
+```
+---
 
 ## 6a. Detection Pipeline — Frame to Event
 
