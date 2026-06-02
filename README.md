@@ -238,41 +238,40 @@ flowchart TD
 
 ```mermaid
 stateDiagram-v2
-    [*] --> NoSession : visitor first detected
+    [*] --> Event
+    Event --> Session: ENTRY
+    Session --> Zone: ZONE_ENTER / ZONE_DWELL / ZONE_EXIT
+    Zone --> Billing: BILLING_QUEUE_JOIN
+    Billing --> Billing: BILLING_QUEUE_ABANDON
+    Billing --> Session: EXIT
+    Session --> Conversion: POS Transaction
+    Session --> [*]: Session End
 
-    NoSession --> SessionOpen : ENTRY event\nassign visitor_id\ncheck Re-ID gallery
+    state Event {
+        [*] --> ENTRY
+        ENTRY --> EXIT
+        ENTRY --> ZONE_ENTER
+        ZONE_ENTER --> ZONE_DWELL
+        ZONE_DWELL --> ZONE_EXIT
+        EXIT --> [*]
+    }
 
-    SessionOpen --> SessionOpen : ZONE_ENTER\nZONE_EXIT\nZONE_DWELL\nupdate zones_visited\ntotal_dwell_ms
+    state Session {
+        [*] --> Active
+        Active --> Converted: converted=True
+        Active --> Abandoned: queue_abandoned=True
+        Active --> Reentry: is_reentry=True
+        Converted --> [*]
+        Abandoned --> [*]
+        Reentry --> Active
+    }
 
-    SessionOpen --> InBilling : ZONE_ENTER BILLING\nset billing_entry_time
+    state Anomaly {
+        [*] --> Detected
+        Detected --> Resolved
+        Resolved --> [*]
+    }
 
-    InBilling --> InBilling : ZONE_DWELL BILLING
-
-    InBilling --> QueueJoined : BILLING_QUEUE_JOIN\nqueue_depth > 0\nqueue_joined = true
-
-    QueueJoined --> Abandoned : BILLING_QUEUE_ABANDON\nqueue_abandoned = true\nbilling_entry_time preserved
-
-    InBilling --> SessionOpen : ZONE_EXIT BILLING\nleft billing area
-
-    QueueJoined --> SessionOpen : ZONE_EXIT BILLING
-
-    InBilling --> Converted : POS transaction\nwithin 5-min window\nconverted = true
-
-    QueueJoined --> Converted : POS transaction\nwithin 5-min window\nconverted = true
-
-    Abandoned --> Converted : POS transaction\nstill within window\nbilling_entry_time intact
-
-    SessionOpen --> SessionClosed : EXIT event\nset exit_time
-
-    InBilling --> SessionClosed : EXIT event
-    QueueJoined --> SessionClosed : EXIT event
-    Converted --> SessionClosed : EXIT event
-    Abandoned --> SessionClosed : EXIT event
-
-    SessionClosed --> [*]
-
-    note right of Converted : counted in\nconversion_rate
-    note right of Abandoned : counted in\nabandonment_rate\nonly if NOT converted
 ```
 
 ---
