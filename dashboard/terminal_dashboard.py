@@ -188,7 +188,7 @@ def _anomaly_panel() -> Panel:
 
     recent = STATE.anomalies[:8]
     if not recent:
-        table.add_row("[dim]No anomalies[/dim]", "", "", "")
+        table.add_row(Text.from_markup("[dim]No anomalies[/dim]"), "", "", "")
     else:
         for a in recent:
             sev     = a.get("severity", "INFO")
