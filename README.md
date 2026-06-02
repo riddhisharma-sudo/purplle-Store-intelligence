@@ -174,36 +174,62 @@ flowchart TD
 ## 6a. Detection Pipeline — Frame to Event
 
 ```mermaid
-flowchart LR
-    A["📹 Video Frame\n1080p 15fps"] --> B["Frame Skip\nevery 3rd frame\n→ 5fps effective"]
-    B --> C["YOLOv8s\nPerson Detection\nconf ≥ 0.35"]
-    C --> D{"Track\nExists?"}
+flowchart TD
 
-    D -->|"New Track"| E["Hybrid Re-ID\nHSV chi² staff check\n+ LAB cosine visitor match"]
-    D -->|"Known Track"| F["Update Centroid\ncx, cy → zone check"]
+    subgraph Cameras["Camera Feeds"]
+        C1["Bounding Box Crops"]
+    end
 
-    E -->|"LAB sim ≥ 0.82\nage ≤ 300s"| G["REENTRY\nReuse visitor_id\nis_reentry = true"]
-    E -->|"No gallery match"| H["New visitor_id\nVIS_xxxxxx"]
+    subgraph Detection["Detection Layer"]
+        D1["YOLOv8m Object Detection"]
+        D2["ByteTrack Multi‑Object Tracking"]
+        C1 --> D1 --> D2
+    end
 
-    G & H & F --> I["Staff Detection\nHSV chi² uniform check\n+ zone traversal heuristic"]
-    I -->|"is_staff = true"| J["Suppress\nfrom customer metrics"]
-    I -->|"is_staff = false"| K["Zone Mapper\nShapely polygon\ncontains centroid"]
+    subgraph ReID["Hybrid Re‑Identification"]
+        R1["HSV Staff Filter"]
+        R2["LAB Embedding Re‑ID"]
+        R3["Cross‑Camera Deduplication"]
+        R4["Re‑Entry Detection (TTL)"]
+        D2 --> R1 & R2
+        R1 & R2 --> R3 --> R4
+    end
 
-    K --> L{"Zone\nTransition?"}
-    L -->|"Entry line cross"| M["ENTRY / EXIT\nevent"]
-    L -->|"New zone entered"| N["ZONE_ENTER\nZONE_EXIT event"]
-    L -->|"Same zone 30s"| O["ZONE_DWELL\n30s heartbeat"]
-    L -->|"BILLING zone"| P{"queue\ndepth > 0?"}
-    P -->|"Yes"| Q["BILLING_QUEUE_JOIN\nqueue_depth in metadata"]
-    P -->|"No"| R["ZONE_ENTER BILLING\nbilling_entry_time set"]
+    subgraph EventStream["Event Stream"]
+        E1["Kafka Transport"]
+        E2["Redis Streams Fallback"]
+        R4 --> E1 --> API
+        R4 --> E2 --> API
+    end
 
-    M & N & O & Q & R --> S["EventEmitter\nbuffer → batch ≤500\nKafka → Redis fallback"]
+    subgraph API["FastAPI Application"]
+        direction TB
+        M["Middleware: Trace Logging"]
+        H["Exception Handlers"]
+        Ingest["POST /events/ingest"]
+        POS["POST /pos/ingest"]
+        Metrics["GET /stores/{id}/metrics"]
+        Funnel["GET /stores/{id}/funnel"]
+        Heatmap["GET /stores/{id}/heatmap"]
+        Anomalies["GET /stores/{id}/anomalies"]
+        Health["GET /health"]
 
-    style A fill:#1e3a5f,color:#fff
-    style G fill:#7c3aed,color:#fff
-    style J fill:#374151,color:#aaa
-    style Q fill:#065f46,color:#fff
-    style S fill:#1e3a5f,color:#fff
+        M --> H --> Ingest & POS & Metrics & Funnel & Heatmap & Anomalies & Health
+    end
+
+    subgraph DB["Database Layer"]
+        DB1["PostgreSQL (Primary)"]
+        DB2["SQLite WAL (Fallback)"]
+    end
+
+    subgraph Background["Background Tasks"]
+        B1["Async Anomaly Detection Loop"]
+    end
+
+    API --> DB
+    API --> Background
+    Background --> DB
+
 ```
 
 ---
