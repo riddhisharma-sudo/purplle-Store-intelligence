@@ -279,31 +279,31 @@ stateDiagram-v2
 ## 6c. Hybrid Re-ID — HSV + LAB Confidence Merge
 
 ```mermaid
-flowchart TD
-    A["New Bounding Box\ntrack_id detected"] --> B["Extract HSV Histogram\nlower 2/3 crop — clothing region\n64H + 32S bins — 96-dim"]
-    A --> C["Extract LAB Histogram\nfull crop — 96-dim\nL2-normalised unit vector"]
+flowchart LR
+    subgraph Input["Bounding Box Crop"]
+        I1["BGR Crop"]
+    end
 
-    B --> D["HSV Chi² Distance\nvs staff uniform models"]
-    D --> E{"chi² ≤ 0.35\nstaff threshold?"}
-    E -->|"Yes — Staff"| F["Suppress track\nstaff confidence = 1 − chi²/threshold"]
-    E -->|"No — Visitor"| G["LAB Cosine Similarity\nvs Re-ID gallery\ndot product of unit vectors"]
+    I1 --> HSV["HSV Histogram"]
+    I1 --> LAB["LAB Histogram"]
 
-    G --> H{"Best match\nsim ≥ 0.82\nage ≤ 300s?"}
-    H -->|"Yes — REENTRY"| I["Reuse visitor_id\nis_reentry = true\nupdate gallery timestamp"]
-    H -->|"No match"| J["New visitor_id\nVIS_xxxxxx\nadd to gallery"]
+    HSV --> StaffCheck["Staff Filter (Chi² distance ≤ threshold)"]
+    LAB --> VisitorMatch["Visitor Re‑ID (Cosine similarity ≥ threshold)"]
 
-    I & J --> K["Merge Confidence Score\n0.65 × LAB_score\n+ 0.35 × HSV_inv_score"]
-    K --> L["ReIDResult\nvisitor_id · is_staff\nis_reentry · confidence"]
+    StaffCheck -->|is_staff| ResultStaff["STAFF_xxx"]
+    VisitorMatch -->|is_reentry| ResultVisitor["Existing Visitor ID"]
+    VisitorMatch -->|new| NewVisitor["New Visitor ID"]
 
-    M["Track Lost / EXIT"] --> N["retire_track\nhold descriptor in gallery\nfor re-entry matching"]
-    N --> O{"TTL > 300s?"}
-    O -->|"Yes"| P["Evict from gallery\n_evict_expired"]
-    O -->|"No"| Q["Hold — await\npotential re-match"]
+    subgraph Confidence["Confidence Merge"]
+        C1["HSV Score = 1 - dist/threshold"]
+        C2["LAB Score = cosine similarity"]
+        Merge["Weighted Merge: 0.65*LAB + 0.35*HSV"]
+    end
 
-    style F fill:#374151,color:#aaa
-    style I fill:#7c3aed,color:#fff
-    style J fill:#065f46,color:#fff
-    style P fill:#7f1d1d,color:#fff
+    StaffCheck --> C1
+    VisitorMatch --> C2
+    C1 & C2 --> Merge --> Final["ReIDResult(visitor_id, is_staff, is_reentry, confidence)"]
+
 ```
 
 ---
