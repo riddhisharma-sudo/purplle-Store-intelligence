@@ -131,48 +131,44 @@ This platform introduces several edge-native optimizations designed to eliminate
 
 ## 6. System Architecture
 
-```mermaid
-flowchart TB
-    subgraph Edge_Node ["Edge CV Node — pipeline/"]
-        Video["Raw CCTV Feeds"] --> FrameSkip["Frame Skip 3x — 5fps effective"]
-        FrameSkip --> YOLOv8["YOLOv8s Person Detector"]
-        YOLOv8 --> ByteTrack["ByteTrack Multi-Object Tracker"]
-        ByteTrack --> ZoneMap["Shapely Zone Mapper"]
-        ByteTrack --> StaffFilt["HSV + Path Heuristic Staff Filter"]
-        ByteTrack --> LABReID["LAB Color Re-ID Gallery — 96-dim"]
+flowchart TD
 
-        ZoneMap & StaffFilt & LABReID --> EventGen["StoreEvent Generator"]
-        EventGen --> BatchEmitter["Batch Emitter — 500 events/batch"]
+    subgraph Client["Client Applications"]
+        A1["Event Producers"] -->|JSONL Batch| API
+        A2["POS Systems"] -->|Transactions| API
+        A3["Dashboards"] -->|Metrics/Funnel/Heatmap| API
     end
 
-    subgraph MessageBus ["Message Bus Layer"]
-        BatchEmitter -->|"Primary"| Kafka["Kafka Broker\nExponential Backoff Retry"]
-        BatchEmitter -->|"Fallback"| Redis["Redis Streams\naioredis XADD"]
+    subgraph API["FastAPI Application"]
+        direction TB
+        M["Middleware: Structured Logging + Trace IDs"]
+        E["Exception Handlers: Safe JSON Errors"]
+        R1["POST /events/ingest"]
+        R2["POST /pos/ingest"]
+        R3["GET /stores/{id}/metrics"]
+        R4["GET /stores/{id}/funnel"]
+        R5["GET /stores/{id}/heatmap"]
+        R6["GET /stores/{id}/anomalies"]
+        R7["GET /health"]
+        R8["GET / (root)"]
+
+        M --> E
+        E --> R1 & R2 & R3 & R4 & R5 & R6 & R7 & R8
     end
 
-    subgraph API_Gateway ["Intelligence API — app/ · Render"]
-        Kafka & Redis -->|"POST /events/ingest"| FastAPI["FastAPI Async App"]
-        POS["POS Terminals"] -->|"POST /pos/ingest"| FastAPI
-
-        FastAPI --> IngestEngine["Idempotency + Dedup Engine\nevent_id uniqueness check"]
-        IngestEngine --> StateMachine["Session State Machine"]
-        StateMachine --> db[("PostgreSQL DB\nRender Managed")]
-
-        AnomalyLoop["Async Anomaly Monitor — 30s"] <-->|"Scan Sessions"| db
-        AnomalyLoop -->|"Upsert Alerts"| db
+    subgraph DB["Database Layer"]
+        D1["PostgreSQL (Primary)"]
+        D2["SQLite WAL (Fallback)"]
     end
 
-    subgraph Clients ["Visualization — dashboard/"]
-        FastAPI -->|"WebSocket / 2s HTTP poll"| TUI["Rich TUI Dashboard\nKPI · Funnel · Heatmap · Alerts"]
+    subgraph Background["Background Tasks"]
+        B1["Anomaly Detection Loop"]
     end
 
-    style Edge_Node fill:#1a1c23,stroke:#3b82f6,stroke-width:2px,color:#fff
-    style MessageBus fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#fff
-    style API_Gateway fill:#111827,stroke:#8b5cf6,stroke-width:2px,color:#fff
-    style Clients fill:#0f172a,stroke:#ec4899,stroke-width:2px,color:#fff
-```
+    API --> DB
+    API --> Background
+    Background --> DB
 
----
 
 ## 6a. Detection Pipeline — Frame to Event
 
