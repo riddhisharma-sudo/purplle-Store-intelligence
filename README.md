@@ -2,11 +2,23 @@
 
 ### **End-to-End Retail Video Analytics & Live Intelligence Platform**
 
-[![Tech Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20PostgreSQL%20%7C%20YOLOv8%20%7C%20Rich-blue)](https://github.com/rohanjain1648/PURPLE_TECH_CHALLENGE)
+[![Tech Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20PostgreSQL%20%7C%20YOLOv8%20%7C%20Rich-blue)](https://github.com/riddhisharma-sudo/purplle-Store-intelligence)
 [![Test Suite](https://img.shields.io/badge/Tests-Pytest%20%3E70%25%20Coverage-green)](pytest.ini)
-[![Deployment](https://img.shields.io/badge/Deployment-Docker%20Orchestrated-violet)](docker-compose.yml)
+[![Deployment](https://img.shields.io/badge/Deployed-Render%20%7C%20Live-brightgreen)](https://purplle-store-intelligence-17fl.onrender.com)
+[![API Docs](https://img.shields.io/badge/API%20Docs-Swagger%20UI-orange)](https://purplle-store-intelligence-17fl.onrender.com/docs)
 
 The **Store Intelligence System** is an enterprise-grade, edge-to-cloud analytical platform that transforms raw security CCTV footage into real-time retail intelligence. By processing video feeds at the edge, stitching spatial events into logical customer shopping journeys, and correlating physical movements with point-of-sale (POS) data, it opens up the offline retail "black box" to compute the ultimate retail North Star: **Offline Store Conversion Rate**.
+
+---
+
+## 🌐 Live Deployment
+
+| Service | URL |
+|---|---|
+| **API Root** | https://purplle-store-intelligence-17fl.onrender.com |
+| **Interactive Docs** | https://purplle-store-intelligence-17fl.onrender.com/docs |
+| **Health Check** | https://purplle-store-intelligence-17fl.onrender.com/health |
+| **Store Metrics** | https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_BLR_002/metrics |
 
 ---
 
@@ -54,8 +66,8 @@ In physical retail, however, store managers are historically blind:
 Our platform solves the offline retail blindspot through a tightly coupled **three-tier system**:
 
 1. **Edge CV Analytics Node (`pipeline/`):** Processes camera feeds locally using an optimized YOLOv8s and ByteTrack configuration. It classifies coordinates against retail zones, filters out store staff, and maps customer identities across camera overlaps using a fast, lighting-invariant Re-ID model.
-2. **Asynchronous Intelligence API (`app/`):** A high-performance FastAPI server powered by asynchronous SQLAlchemy and PostgreSQL. It ingests batch events, aggregates spatial trajectories into active shopper sessions, deduplicates transactions, and exposes real-time analytical endpoints.
-3. **Live TUI Terminal Dashboard (`dashboard/`):** A beautiful real-time Text User Interface (TUI) powered by the `rich` library. It connects to the API and displays active customer volume, conversion rates, zone heatmaps, checkout funnel drop-offs, and critical system anomalies.
+2. **Asynchronous Intelligence API (`app/`):** A high-performance FastAPI server powered by asynchronous SQLAlchemy and PostgreSQL. It ingests batch events, aggregates spatial trajectories into active shopper sessions, deduplicates transactions, and exposes real-time analytical endpoints. **Deployed live on Render.**
+3. **Live TUI Terminal Dashboard (`dashboard/`):** A beautiful real-time Text User Interface (TUI) powered by the `rich` library. It connects to the live API via WebSocket (HTTP-poll fallback) and displays active customer volume, conversion rates, zone heatmaps, checkout funnel drop-offs, and critical system anomalies.
 
 ---
 
@@ -75,11 +87,11 @@ This platform introduces several edge-native optimizations designed to eliminate
 
 * **Multi-Camera Occlusion-Resistant Tracking:** Integrates ByteTrack's dual-pass association to maintain visitor tracking even through severe billing queue occlusions.
 * **Vectorized Polygon Zone Mapping:** Utilizes ray-casting polygon intersection algorithms (`shapely`) to classify bounding box centroids into dynamic store zones (e.g., `ENTRY`, `FLOOR`, `BILLING_QUEUE`, etc.).
-* **Idempotent Ingestion Engine:** Ingests up to 500 events per batch with high-performance deduplication, preventing event duplication on retry.
+* **Idempotent Ingestion Engine with Kafka + Redis Fallback:** Ingests up to 500 events per batch with high-performance deduplication. Publishes to Kafka (primary) with exponential-backoff retry, falling back to Redis Streams if the broker is unavailable.
 * **Real-time Session State Machine:** Builds comprehensive visitor histories, accumulating total dwell times and tracking exact zone pathways.
 * **Receipt-to-Session Correlation:** Automatically correlates POS transactions with store sessions based on checkout times within a tight 5-minute sliding window.
 * **Active Anomaly & Alerts Engine:** Runs background async loops every 30s to trigger, persist, and auto-resolve critical retail issues (e.g., `BILLING_QUEUE_SPIKE`, `CONVERSION_DROP`, `DEAD_ZONE`, `STALE_FEED`).
-* **Interactive Live TUI Dashboard:** Features color-coded metrics, animated bar graphs, formatted heatmaps, and a real-time system alerts ticker.
+* **Interactive Live TUI Dashboard:** WebSocket primary feed with HTTP-poll fallback (`DASHBOARD_MODE=TUI`). Features color-coded KPI tiles, conversion funnel bars, zone heatmap, and a severity-coded anomaly log panel.
 
 ---
 
@@ -90,22 +102,22 @@ This platform introduces several edge-native optimizations designed to eliminate
   │                       │                        │                       │
   ├─► Customer enters     │                        │                       │
   │   (ENTRY Event)       │                        │                       │
-  │   visitor_id: 104     │                        │                       │
+  │   visitor_id: VIS_104 │                        │                       │
   │                       │                        │                       │
   │                       ├─► Browses cosmetics    │                       │
-  │                       │   (ZONE_ENTER: Floor)  │                       │
+  │                       │   (ZONE_ENTER: SKINCARE│                       │
   │                       │   Dwells for 4 mins    │                       │
   │                       │                        │                       │
-  │                       │                        ├─► Enters checkout queue│
+  │                       │                        ├─► Enters checkout queue
   │                       │                        │   (BILLING_QUEUE_JOIN)│
-  │                       │                        │   Queue size checked  │
+  │                       │                        │   queue_depth checked │
   │                       │                        │                       │
-  │                       │                        │                       ├─► Customer pays cash
-  │                       │                        │                       │   POS transaction sent
-  │                       │                        │                       │   (POS Ingest)
+  │                       │                        │                       ├─► Customer pays
+  │                       │                        │                       │   POS transaction
+  │                       │                        │                       │   (POST /pos/ingest)
   │                       │                        │                       │
   │                       │                        │                       ├─► Match within 5 min
-  │                       │                        │                       │   session 104 converted!
+  │                       │                        │                       │   session VIS_104 → converted!
   │                       │                        │                       │
   │                       │                        ├─► Exits register      │
   │                       │                        │   (BILLING_QUEUE_EXIT)│
@@ -126,30 +138,36 @@ flowchart TB
         FrameSkip --> YOLOv8["YOLOv8s Person Detector"]
         YOLOv8 --> ByteTrack["ByteTrack Multi-Object Tracker"]
         ByteTrack --> ZoneMap["Shapely Zone Mapper"]
-        ByteTrack --> StaffFilt["HSV + Contextual Staff Filter"]
-        ByteTrack --> LABReID["LAB Color Re-ID Gallery"]
+        ByteTrack --> StaffFilt["HSV + Path Heuristic Staff Filter"]
+        ByteTrack --> LABReID["LAB Color Re-ID Gallery — 96-dim"]
 
         ZoneMap & StaffFilt & LABReID --> EventGen["StoreEvent Generator"]
-        EventGen --> BatchEmitter["Batch Event Emitter — emit.py"]
+        EventGen --> BatchEmitter["Batch Emitter — 500 events/batch"]
     end
 
-    subgraph API_Gateway ["Intelligence API Gateway — app/"]
-        BatchEmitter -->|"POST /events/ingest"| FastAPI["FastAPI REST App"]
+    subgraph MessageBus ["Message Bus Layer"]
+        BatchEmitter -->|"Primary"| Kafka["Kafka Broker\nExponential Backoff Retry"]
+        BatchEmitter -->|"Fallback"| Redis["Redis Streams\naioredis XADD"]
+    end
+
+    subgraph API_Gateway ["Intelligence API — app/ · Render"]
+        Kafka & Redis -->|"POST /events/ingest"| FastAPI["FastAPI Async App"]
         POS["POS Terminals"] -->|"POST /pos/ingest"| FastAPI
 
-        FastAPI --> IngestEngine["Idempotency + Ingestion Engine"]
+        FastAPI --> IngestEngine["Idempotency + Dedup Engine\nevent_id uniqueness check"]
         IngestEngine --> StateMachine["Session State Machine"]
-        StateMachine --> db[("PostgreSQL DB")]
+        StateMachine --> db[("PostgreSQL DB\nRender Managed")]
 
-        AnomalyLoop["Async Anomaly Monitor — 30s cycle"] <-->|"Scan Sessions"| db
+        AnomalyLoop["Async Anomaly Monitor — 30s"] <-->|"Scan Sessions"| db
         AnomalyLoop -->|"Upsert Alerts"| db
     end
 
     subgraph Clients ["Visualization — dashboard/"]
-        FastAPI -->|"JSON — 2s poll"| TUI["Rich Terminal Dashboard"]
+        FastAPI -->|"WebSocket / 2s HTTP poll"| TUI["Rich TUI Dashboard\nKPI · Funnel · Heatmap · Alerts"]
     end
 
     style Edge_Node fill:#1a1c23,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style MessageBus fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#fff
     style API_Gateway fill:#111827,stroke:#8b5cf6,stroke-width:2px,color:#fff
     style Clients fill:#0f172a,stroke:#ec4899,stroke-width:2px,color:#fff
 ```
@@ -160,29 +178,29 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    A["📹 Video Frame\n1080p 15fps"] --> B["Frame Skip\nevery 3rd frame\n→ 5fps"]
+    A["📹 Video Frame\n1080p 15fps"] --> B["Frame Skip\nevery 3rd frame\n→ 5fps effective"]
     B --> C["YOLOv8s\nPerson Detection\nconf ≥ 0.35"]
     C --> D{"Track\nExists?"}
 
-    D -->|"New Track"| E["LAB Re-ID\n96-dim histogram\ncosine match"]
-    D -->|"Known Track"| F["Update Centroid\ncx, cy"]
+    D -->|"New Track"| E["Hybrid Re-ID\nHSV chi² staff check\n+ LAB cosine visitor match"]
+    D -->|"Known Track"| F["Update Centroid\ncx, cy → zone check"]
 
-    E -->|"Similarity ≥ 0.82\nwithin 5 min"| G["REENTRY\nSame visitor_id"]
-    E -->|"No match"| H["New visitor_id\nVIS_xxxxxx"]
+    E -->|"LAB sim ≥ 0.82\nage ≤ 300s"| G["REENTRY\nReuse visitor_id\nis_reentry = true"]
+    E -->|"No gallery match"| H["New visitor_id\nVIS_xxxxxx"]
 
-    G & H & F --> I["Staff Detection\nHSV uniform check\n+ zone traversal"]
-    I -->|"is_staff = true"| J["Suppress from\ncustomer metrics"]
-    I -->|"is_staff = false"| K["Zone Mapper\nShapely polygon\ncontains point"]
+    G & H & F --> I["Staff Detection\nHSV chi² uniform check\n+ zone traversal heuristic"]
+    I -->|"is_staff = true"| J["Suppress\nfrom customer metrics"]
+    I -->|"is_staff = false"| K["Zone Mapper\nShapely polygon\ncontains centroid"]
 
-    K --> L{"Zone\nChange?"}
+    K --> L{"Zone\nTransition?"}
     L -->|"Entry line cross"| M["ENTRY / EXIT\nevent"]
-    L -->|"New zone"| N["ZONE_ENTER\nZONE_EXIT\nevent"]
-    L -->|"Same zone 30s"| O["ZONE_DWELL\n30s interval"]
-    L -->|"BILLING zone"| P{"Queue\ndepth > 0?"}
+    L -->|"New zone entered"| N["ZONE_ENTER\nZONE_EXIT event"]
+    L -->|"Same zone 30s"| O["ZONE_DWELL\n30s heartbeat"]
+    L -->|"BILLING zone"| P{"queue\ndepth > 0?"}
     P -->|"Yes"| Q["BILLING_QUEUE_JOIN\nqueue_depth in metadata"]
-    P -->|"No"| R["ZONE_ENTER BILLING\nbilling_entry_time set\nfor POS correlation"]
+    P -->|"No"| R["ZONE_ENTER BILLING\nbilling_entry_time set"]
 
-    M & N & O & Q & R --> S["EventEmitter\nbuffer → batch 500\nPOST /events/ingest"]
+    M & N & O & Q & R --> S["EventEmitter\nbuffer → batch ≤500\nKafka → Redis fallback"]
 
     style A fill:#1e3a5f,color:#fff
     style G fill:#7c3aed,color:#fff
@@ -197,9 +215,9 @@ flowchart LR
 
 ```mermaid
 stateDiagram-v2
-    [*] --> NoSession : visitor first seen
+    [*] --> NoSession : visitor first detected
 
-    NoSession --> SessionOpen : ENTRY event\nassign visitor_id\nis_reentry checked
+    NoSession --> SessionOpen : ENTRY event\nassign visitor_id\ncheck Re-ID gallery
 
     SessionOpen --> SessionOpen : ZONE_ENTER\nZONE_EXIT\nZONE_DWELL\nupdate zones_visited\ntotal_dwell_ms
 
@@ -207,11 +225,11 @@ stateDiagram-v2
 
     InBilling --> InBilling : ZONE_DWELL BILLING
 
-    InBilling --> QueueJoined : BILLING_QUEUE_JOIN\nqueue_depth > 0\nset queue_joined = true
+    InBilling --> QueueJoined : BILLING_QUEUE_JOIN\nqueue_depth > 0\nqueue_joined = true
 
     QueueJoined --> Abandoned : BILLING_QUEUE_ABANDON\nqueue_abandoned = true\nbilling_entry_time preserved
 
-    InBilling --> SessionOpen : ZONE_EXIT BILLING\n(left billing area)
+    InBilling --> SessionOpen : ZONE_EXIT BILLING\nleft billing area
 
     QueueJoined --> SessionOpen : ZONE_EXIT BILLING
 
@@ -236,71 +254,65 @@ stateDiagram-v2
 
 ---
 
-## 6c. Re-ID and Re-entry Detection
+## 6c. Hybrid Re-ID — HSV + LAB Confidence Merge
 
 ```mermaid
 flowchart TD
-    A["New Track Detected\ntrack_id = 42"] --> B["Extract LAB Histogram\n96-dim unit-norm vector\nfrom bounding box crop"]
+    A["New Bounding Box\ntrack_id detected"] --> B["Extract HSV Histogram\nlower 2/3 crop — clothing region\n64H + 32S bins — 96-dim"]
+    A --> C["Extract LAB Histogram\nfull crop — 96-dim\nL2-normalised unit vector"]
 
-    B --> C["Search Re-ID Gallery\ncosine similarity vs\nexited descriptors"]
+    B --> D["HSV Chi² Distance\nvs staff uniform models"]
+    D --> E{"chi² ≤ 0.35\nstaff threshold?"}
+    E -->|"Yes — Staff"| F["Suppress track\nstaff confidence = 1 − chi²/threshold"]
+    E -->|"No — Visitor"| G["LAB Cosine Similarity\nvs Re-ID gallery\ndot product of unit vectors"]
 
-    C --> D{"Best match\nScore ≥ 0.82\nAge ≤ 300s?"}
+    G --> H{"Best match\nsim ≥ 0.82\nage ≤ 300s?"}
+    H -->|"Yes — REENTRY"| I["Reuse visitor_id\nis_reentry = true\nupdate gallery timestamp"]
+    H -->|"No match"| J["New visitor_id\nVIS_xxxxxx\nadd to gallery"]
 
-    D -->|"Yes — REENTRY"| E["Reuse visitor_id\nVIS_c8a2f1\nemit REENTRY event\nis_reentry = true on session"]
+    I & J --> K["Merge Confidence Score\n0.65 × LAB_score\n+ 0.35 × HSV_inv_score"]
+    K --> L["ReIDResult\nvisitor_id · is_staff\nis_reentry · confidence"]
 
-    D -->|"No match"| F["Assign new visitor_id\nVIS_xxxxxx\nemit ENTRY event"]
+    M["Track Lost / EXIT"] --> N["retire_track\nhold descriptor in gallery\nfor re-entry matching"]
+    N --> O{"TTL > 300s?"}
+    O -->|"Yes"| P["Evict from gallery\n_evict_expired"]
+    O -->|"No"| Q["Hold — await\npotential re-match"]
 
-    G["Track Lost / EXIT crossed"] --> H["retire_track\nStore descriptor + timestamp\nin gallery OrderedDict"]
-
-    H --> I{"Gallery TTL\n> 300s?"}
-    I -->|"Yes"| J["Evict stale entry\n_evict_expired"]
-    I -->|"No"| K["Hold in gallery\nwaiting for potential re-match"]
-
-    L["Cross-Camera Match\nCAM_ENTRY_01 → CAM_FLOOR_01"] --> M["Shared ReIDManager\nacross all cameras\nfor same store"]
-    M --> C
-
-    style E fill:#7c3aed,color:#fff
-    style F fill:#065f46,color:#fff
-    style J fill:#7f1d1d,color:#fff
+    style F fill:#374151,color:#aaa
+    style I fill:#7c3aed,color:#fff
+    style J fill:#065f46,color:#fff
+    style P fill:#7f1d1d,color:#fff
 ```
 
 ---
 
-## 6d. Anomaly Detection — Background Loop
+## 6d. Kafka + Redis Ingestion with Fallback
 
 ```mermaid
 flowchart TD
-    T["asyncio.Task\nevery 30 seconds"] --> S["Get all store_ids\nfrom events table"]
+    A["POST /events/ingest\nbatch ≤ 500 events"] --> B["Deduplication\nquery event_id\nvs PostgreSQL"]
+    B --> C{"Novel\nevents?"}
+    C -->|"All duplicates"| D["Return 202\n0 accepted"]
+    C -->|"Novel batch"| E["Try Kafka Broker\naiokafka AIOKafkaProducer"]
 
-    S --> Loop["For each store_id"]
+    E --> F{"Attempt 1\nsend_and_wait"}
+    F -->|"Success"| G["bus = kafka\nlog sent count"]
+    F -->|"KafkaError"| H["Backoff 0.5s\nAttempt 2"]
+    H -->|"Success"| G
+    H -->|"KafkaError"| I["Backoff 1.0s\nAttempt 3"]
+    I -->|"Success"| G
+    I -->|"Exhausted"| J["Redis Streams Fallback\naioredis XADD pipeline\nbus = redis"]
 
-    Loop --> A1["BILLING_QUEUE_SPIKE\nCount open billing sessions\nno exit, not abandoned"]
-    A1 --> A1a{"depth ≥ 10?"}
-    A1a -->|"Yes"| A1b["Upsert CRITICAL\nDeploy staff immediately"]
-    A1a -->|"depth ≥ 5"| A1c["Upsert WARN\nOpen another counter"]
-    A1a -->|"No"| A1d["Resolve if active"]
+    G & J --> K["Persist to PostgreSQL\nSQLAlchemy db.add_all\nawait db.commit"]
+    K -->|"DB error"| L["Return 500\nevents on bus\nbut DB failed"]
+    K -->|"Success"| M["Return 202\naccepted + bus used\n+ duplicate count"]
 
-    Loop --> A2["CONVERSION_DROP\nToday rate vs 7-day avg\nmin 5 sessions needed"]
-    A2 --> A2a{"Drop ≥ 20%?"}
-    A2a -->|"≥ 35%"| A2b["Upsert CRITICAL"]
-    A2a -->|"≥ 20%"| A2c["Upsert WARN"]
+    J -->|"Redis also fails"| N["Return 503\nboth buses down"]
 
-    Loop --> A3["DEAD_ZONE\nZones active in last 7d\nbut silent in last 30 min"]
-    A3 --> A3a{"Any dead\nzones?"}
-    A3a -->|"Yes"| A3b["Upsert INFO per zone\nCheck signage + camera"]
-
-    Loop --> A4["HIGH_ENTRY_RATE\nlast-10-min entries vs\nhourly baseline / 5"]
-    A4 --> A4a{"ratio ≥ 3x?"}
-    A4a -->|"≥ 5x"| A4b["Upsert CRITICAL\nExtreme surge"]
-    A4a -->|"≥ 3x"| A4c["Upsert WARN\nFootfall surge — prep counters"]
-    A4a -->|"No"| A4d["Resolve if active"]
-
-    A1b & A1c & A2b & A2c & A3b & A4b & A4c --> DB[("anomalies table\nseverity + suggested_action\nauto-resolves next cycle")]
-
-    style T fill:#1e3a5f,color:#fff
-    style DB fill:#111827,color:#fff
-    style A1b fill:#7f1d1d,color:#fff
-    style A4b fill:#7f1d1d,color:#fff
+    style G fill:#065f46,color:#fff
+    style J fill:#92400e,color:#fff
+    style N fill:#7f1d1d,color:#fff
+    style D fill:#374151,color:#aaa
 ```
 
 ---
@@ -311,12 +323,12 @@ The system operates as a continuous stream-processing pipeline orchestrated as f
 
 1. **Frame Capture and Skip:** The OpenCV-based `pipeline.detect` camera manager pulls live RTSP or file-based video frames. It forwards every 3rd frame to the model while holding track centroids in buffer.
 2. **Inference & Spatial Mapping:** YOLOv8s extracts bounding boxes, which are passed to ByteTrack to preserve identity. Centroids are passed through Shapely polygons from `data/store_layout.json` to assign coordinates to active zones.
-3. **Filtering & Appearance Memory:** Bounding boxes representing new tracks are mapped by the Staff Detector. Customers are registered in the LAB Re-ID gallery. If a customer exits and re-enters within 5 minutes, their identity is merged.
-4. **Buffered Batch Emission:** The `pipeline.emit` package validates event payloads against target schemas. Valid events are added to an active queue and pushed to `/events/ingest` in batches of up to 500 to optimize HTTP network round-trips.
-5. **Database Transaction Ingestion:** FastAPI handles the batch inside an isolated PostgreSQL transaction, checking incoming `event_id` keys against existing DB rows to maintain idempotency.
+3. **Hybrid Staff Filtering & Re-ID:** Bounding boxes are scored by both HSV chi² (staff detection) and LAB cosine similarity (visitor Re-ID). A weighted confidence merge (`0.65 × LAB + 0.35 × HSV_inv`) produces a single ReIDResult per track.
+4. **Buffered Batch Emission with Bus Fallback:** Events are buffered and pushed in batches of up to 500. Kafka is tried first (3 attempts, exponential backoff), with Redis Streams as fallback. Idempotency is enforced via `event_id` pre-query before any write.
+5. **Database Transaction Ingestion:** FastAPI handles the batch inside an isolated PostgreSQL transaction. Novel events are written; duplicates are counted and returned in the response.
 6. **State-Machine Updates:** Verified events are fed into the SQLAlchemy Session State Machine, updating customer tracks, flags, and aggregate metrics.
-7. **Background Alert Scan:** An asynchronous loop (`asyncio.create_task`) runs in the background of the API process every 30 seconds. It evaluates KPIs and updates store alert tables.
-8. **UI Rendering:** The Terminal Dashboard queries endpoints every 2 seconds, transforming PostgreSQL metrics into clean visual tables.
+7. **Background Alert Scan:** An asynchronous loop (`asyncio.create_task`) runs every 30 seconds, evaluating KPIs and upserting store alert rows.
+8. **UI Rendering:** The Rich TUI Dashboard subscribes via WebSocket (falls back to HTTP polling every 2s when `DASHBOARD_MODE=TUI`), rendering KPI tiles, conversion funnel, zone heatmap, and severity-coded anomaly log.
 
 ---
 
@@ -366,18 +378,21 @@ The session state machine maintains the operational state of the store. When raw
 
 | Technology Layer | Component | Purpose |
 |---|---|---|
-| **Programming Language** | Python 3.10+ | Core language for edge computer vision, API server, and terminal UI. |
+| **Programming Language** | Python 3.11+ | Core language for edge CV, API server, and terminal UI. |
 | **Computer Vision** | OpenCV | Efficient video frame capture and camera rendering. |
 | **Object Detection** | Ultralytics YOLOv8s | Balance of person-detection accuracy ($\sim48\text{ mAP}$) and edge-device inference speed. |
-| **Object Tracking** | ByteTrack | Multi-object association using second-pass tracking for highly-occluded retail environments. |
+| **Object Tracking** | ByteTrack | Multi-object association using second-pass tracking for occluded retail environments. |
 | **Spatial Calculations** | Shapely | Fast vector polygon intersection checks for store zone boundaries. |
 | **API Framework** | FastAPI | High-performance asynchronous REST API supporting non-blocking backend operations. |
+| **Message Bus (Primary)** | Kafka + aiokafka | Async event streaming with exponential-backoff retry and idempotent ingestion. |
+| **Message Bus (Fallback)** | Redis Streams + aioredis | Async fallback bus via XADD pipeline when Kafka broker is unavailable. |
 | **Logging Engine** | Structlog | JSON-structured logs with injected request IDs for production debugging. |
 | **Database ORM** | SQLAlchemy 2.0 (Async) | Modern asynchronous object-relational mapper for scalable database interactions. |
-| **Production Database** | PostgreSQL | Robust relational storage with indexing for high-concurrency event writes. |
-| **Local / Test Database** | SQLite (`aiosqlite`) | Light in-memory async database fallback for zero-install local testing and dev. |
-| **Visual Dashboard UI** | Rich | Modern terminal graphics toolkit for responsive, zero-browser live dashboards. |
+| **Production Database** | PostgreSQL (Render) | Managed relational storage with indexing for high-concurrency event writes. |
+| **Local / Test Database** | SQLite (`aiosqlite`) | Light async database fallback for zero-install local testing and dev. |
+| **Visual Dashboard UI** | Rich + WebSocket | Terminal dashboard with KPI tiles, funnel bars, heatmap, and anomaly log. |
 | **Orchestration** | Docker & Docker Compose | Containerization of PostgreSQL, API service, CV pipeline, and dashboard UI. |
+| **Cloud Deployment** | Render | Multi-stage Docker build, managed PostgreSQL, auto-deploy from GitHub. |
 | **Unit / Integration Tests** | Pytest & Pytest-Cov | Validation suite covering data pipelines, API routes, and edge-cases. |
 
 ---
@@ -397,9 +412,9 @@ Building a production-ready system requires balancing automated AI suggestions w
 > * **Our Decision:** Overrode this approach because computing live metrics across thousands of sessions on every request adds severe latency. We moved the detector to a background `asyncio.Task` running every 30 seconds. The `/anomalies` endpoint now performs an $O(1)$ read from pre-computed tables.
 
 > [!WARNING]
-> **Decision 3: Storage Isolation and Local Dev Speed**
-> * **AI Suggestion:** Recommended pure PostgreSQL from day one.
-> * **Our Decision:** Accepted PostgreSQL for production but added an automatic fallback using `aiosqlite` based on the configured `DATABASE_URL`. This allows developers to run tests locally in under 2 seconds without starting a Docker container, vastly improving the developer experience.
+> **Decision 3: Message Bus Resilience**
+> * **AI Suggestion:** Recommended pure Kafka from day one for all event ingestion.
+> * **Our Decision:** Accepted Kafka as primary but added an automatic Redis Streams fallback using `aioredis` with exponential-backoff retry (3 attempts, 0.5→1.0→2.0s). This ensures zero event loss during transient broker outages without requiring operator intervention.
 
 ---
 
@@ -431,12 +446,13 @@ A retail fashion boutique has five staff members restocking shelves throughout t
 
 | Metric / Feature | IR Beam Entry Counters | High-End Cloud VLM Streaming | Store Intelligence System (Ours) |
 |---|---|---|---|
-| **Identity Deduplication** | ❌ None | ✅ High (Deep Learning OSNet) | ✅ High (LAB Color Histogram) |
+| **Identity Deduplication** | ❌ None | ✅ High (Deep Learning OSNet) | ✅ High (Hybrid HSV + LAB) |
 | **Store Zone Telemetry** | ❌ None | ✅ Full Zone Tracking | ✅ Full Zone Tracking |
-| **Compute / Bandwidth Cost** | 🟢 Extremely Low | 🔴 Extremely High ($100\text{s}$ per camera/mo) | 🟢 Low (Runs locally on Edge CPU/GPU) |
-| **Privacy Compliance** | 🟢 High (No cameras) | 🔴 Low (Raw video streamed to cloud) | 🟢 High (Local processing, zero facial storage) |
-| **Setup Time** | 🟢 Quick | 🔴 Long (Model training, cloud setup) | 🟢 Quick (5-Command Setup) |
-| **Operational Costs** | 🟢 Low | 🔴 High VLM API Costs | 🟢 Free (Self-hosted Edge and DB) |
+| **Compute / Bandwidth Cost** | 🟢 Extremely Low | 🔴 Extremely High ($100\text{s}$ per camera/mo) | 🟢 Low (Edge CPU/GPU) |
+| **Privacy Compliance** | 🟢 High (No cameras) | 🔴 Low (Raw video to cloud) | 🟢 High (Local processing, no PII stored) |
+| **Message Bus Resilience** | 🔴 None | 🟡 Cloud-managed | 🟢 Kafka + Redis fallback |
+| **Setup Time** | 🟢 Quick | 🔴 Long (training + cloud setup) | 🟢 Quick (5-Command Setup) |
+| **Operational Costs** | 🟢 Low | 🔴 High VLM API Costs | 🟢 Low (Render free tier + self-hosted edge) |
 
 ---
 
@@ -445,8 +461,9 @@ A retail fashion boutique has five staff members restocking shelves throughout t
 Our architecture is designed to scale to 40+ concurrent retail stores:
 
 * **Non-blocking Event Loops:** FastAPI's async route handlers process bulk writes without blocking, ensuring the server can handle high concurrent traffic.
-* **Optimized Bulk Ingest:** The `/events/ingest` handler batches up to 500 events, performing single-query lookups to prevent database locks.
+* **Optimized Bulk Ingest:** The `/events/ingest` handler batches up to 500 events, performing single-query deduplication lookups to prevent database locks.
 * **Database Indexing:** Composite indices on `(store_id, entry_time)` ensure fast query execution for metrics endpoints, even with millions of rows.
+* **Bus Failover:** Kafka → Redis Streams fallback ensures ingestion continues during transient broker failures with zero manual intervention.
 * **Scalable Funnel Queries:** While the current system processes visitor counts in memory, it is designed to transition to native PostgreSQL `COUNT(DISTINCT visitor_id)` queries as database sizes grow.
 
 ---
@@ -457,7 +474,7 @@ We treat privacy as a core engineering requirement:
 
 * **Privacy by Design:** The system does not use facial recognition or biometric scanning.
 * **Anonymized Data Representation:** Raw camera frames are processed locally at the edge and immediately discarded. Bounding boxes are converted into anonymous coordinate logs and a 96-dimensional LAB color histogram. No personal identifiable information (PII) is ever written to the database.
-* **Memory-Resident Identity TTL:** The Re-ID appearance database is stored strictly in-memory at the edge and is automatically purged after 5 minutes, ensuring visitor data is temporary.
+* **Memory-Resident Identity TTL:** The Re-ID appearance gallery is stored strictly in-memory at the edge and is automatically purged after 5 minutes, ensuring visitor data is ephemeral.
 
 ---
 
@@ -465,18 +482,19 @@ We treat privacy as a core engineering requirement:
 
 | Evaluation Criterion | Implementation Details | Evidence in Codebase |
 |---|---|---|
-| **Functional Completeness** | End-to-end flow from raw video to terminal dashboard is fully operational. | [detect.py](file:///d:/downloads/purple/store-intelligence/pipeline/detect.py), [main.py](file:///d:/downloads/purple/store-intelligence/app/main.py), [terminal_dashboard.py](file:///d:/downloads/purple/store-intelligence/dashboard/terminal_dashboard.py) |
-| **Code Coverage** | Comprehensive automated test suite ensuring correct metric calculations, funnel operations, and health checks. | Enforced at $>70\%$ in [pytest.ini](file:///d:/downloads/purple/store-intelligence/pytest.ini) |
-| **Edge-Case Resilience** | System handles empty stores, zero transactions, employee filtering, and re-entry tracking without breaking. | Covered in [test_ingestion.py](file:///d:/downloads/purple/store-intelligence/tests/test_ingestion.py) and [test_metrics.py](file:///d:/downloads/purple/store-intelligence/tests/test_metrics.py) |
-| **Production Readiness** | Utilizes structured logging with trace IDs, graceful error handling, and robust database pooling. | [logging_config.py](file:///d:/downloads/purple/store-intelligence/app/logging_config.py), [database.py](file:///d:/downloads/purple/store-intelligence/app/database.py) |
+| **Functional Completeness** | End-to-end flow from raw video to live terminal dashboard is fully operational and deployed. | [detect.py](pipeline/detect.py), [main.py](app/main.py), [terminal_dashboard.py](dashboard/terminal_dashboard.py) |
+| **Code Coverage** | Comprehensive automated test suite ensuring correct metric calculations, funnel operations, and health checks. | Enforced at $>70\%$ in [pytest.ini](pytest.ini) |
+| **Edge-Case Resilience** | System handles empty stores, zero transactions, employee filtering, Kafka outages, and re-entry tracking without breaking. | [test_ingestion.py](tests/test_ingestion.py), [test_metrics.py](tests/test_metrics.py) |
+| **Production Readiness** | Structured logging with trace IDs, graceful error handling, multi-stage Docker build, deployed on Render with managed PostgreSQL. | [logging_config.py](app/logging_config.py), [Dockerfile.api](Dockerfile.api), [railway.toml](railway.toml) |
 
 ---
 
 ## 17. Trade-offs
 
 * **Model Accuracy vs. Compute Cost:** We chose **YOLOv8s** over YOLOv8m or RT-DETR. While the larger models offer a minor accuracy bump, they double hardware requirements. YOLOv8s delivers strong person detection at a fraction of the compute cost.
-* **Re-ID Method:** We opted for a **LAB color histogram** over a deep OSNet feature extractor. Deep extractors are highly robust but require dedicated GPUs. The LAB approach runs in $<1\text{ms}$ on low-cost CPUs and handles retail lighting changes well.
+* **Re-ID Method:** We opted for a **Hybrid HSV + LAB approach** over a deep OSNet feature extractor. Deep extractors are highly robust but require dedicated GPUs. The hybrid approach runs in $<1\text{ms}$ on low-cost CPUs, handles retail lighting changes well, and doubles as a staff filter.
 * **ORM Usage:** We chose **SQLAlchemy ORM** over raw SQL queries. While raw SQL has slightly less overhead, the ORM provides strong type safety and allows us to seamlessly swap between PostgreSQL and SQLite.
+* **Message Bus:** We chose **Kafka + Redis fallback** over a single-bus approach. The added complexity of two clients is offset by zero-downtime resilience during transient broker failures.
 
 ---
 
@@ -485,15 +503,17 @@ We treat privacy as a core engineering requirement:
 ```
 ┌────────────────────────────────────────────────────────┐
 │ TIER 3: ADVANCED                                       │
-│ • Custom Multi-Camera ByteTrack Coordination           │
-│ • LAB Color space Appearance Re-ID Model               │
+│ • Hybrid HSV + LAB Re-ID with Weighted Confidence Merge│
+│ • Kafka + Redis Streams Fallback with Backoff Retry    │
 │ • Background asyncio Anomaly Alerts Daemon             │
+│ • Multi-Stage Docker Build — Render Cloud Deployment   │
 └───────────────────────────┬────────────────────────────┘
                             │
 ┌───────────────────────────▼────────────────────────────┐
 │ TIER 2: INTERMEDIATE                                   │
 │ • Asynchronous Database Connection Pools (SQLAlchemy)  │
 │ • Pydantic Schema Validation & Custom Validators       │
+│ • WebSocket Dashboard Feed + HTTP-Poll Fallback        │
 │ • Multi-Container Docker Orchestration (Compose)       │
 └───────────────────────────┬────────────────────────────┘
                             │
@@ -515,8 +535,8 @@ Full system — PostgreSQL + API + detection pipeline + live dashboard — in **
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/rohanjain1648/PURPLE_TECH_CHALLENGE.git
-cd PURPLE_TECH_CHALLENGE/store-intelligence
+git clone https://github.com/riddhisharma-sudo/purplle-Store-intelligence.git
+cd purplle-Store-intelligence
 
 # 2. Copy environment config
 cp .env.example .env
@@ -543,9 +563,13 @@ docker compose attach dashboard
 
 **Verify the API is live:**
 ```bash
+# Local
 curl http://localhost:8000/health
 curl "http://localhost:8000/stores/STORE_BLR_002/metrics"
-curl "http://localhost:8000/stores/STORE_PRP_001/metrics?date=2026-04-10"
+
+# Live Render deployment
+curl https://purplle-store-intelligence-17fl.onrender.com/health
+curl "https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_BLR_002/metrics"
 ```
 
 ---
@@ -553,10 +577,10 @@ curl "http://localhost:8000/stores/STORE_PRP_001/metrics?date=2026-04-10"
 ### **Manual Local Installation (For Development & Testing)**
 
 #### **1. Set up your Python environment**
-Ensure you are using Python 3.10+:
+Ensure you are using Python 3.11+:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows, use: .\venv\Scripts\activate
+source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 ```
 
 #### **2. Install required packages**
@@ -568,7 +592,6 @@ pip install -r requirements-pipeline.txt
 
 #### **3. Start the local server**
 ```bash
-# Run against the fast, local SQLite fallback
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
@@ -585,10 +608,8 @@ The provided clips are in `CCTV Footage/` and are mapped to camera roles via `da
 | `CAM 4.mp4` | `CAM_BACK_01` | Stockroom (force `is_staff=True` for all detections) |
 
 ```bash
-# Install detection dependencies (first time only)
 pip install -r requirements-pipeline.txt
 
-# Run YOLOv8s detection over all 5 clips
 python -m pipeline.detect \
   --clips-config data/clips_config.json \
   --clips-dir "CCTV Footage" \
@@ -597,7 +618,6 @@ python -m pipeline.detect \
   --output events_STORE_PRP_001.jsonl \
   --conf 0.35
 
-# Load POS transactions (once per dataset)
 python -m pipeline.load_pos \
   --csv pos_transactions.csv \
   --api-url http://localhost:8000
@@ -608,19 +628,25 @@ Or use the one-line shell script:
 bash pipeline/run.sh "CCTV Footage" http://localhost:8000
 ```
 
-#### **4b. Run the customer event simulator** *(no clips needed, for testing)*
+#### **4b. Run the customer event simulator** *(no clips needed)*
 ```bash
-python -m pipeline.simulate \
-  --store-id STORE_PRP_001 \
-  --layout data/store_layout.json \
-  --api-url http://localhost:8000 \
-  --visitors 100 \
-  --speed 30
+# Against local server
+python -m pipeline.simulate --store-id STORE_BLR_002 --layout data/store_layout.json --api-url http://localhost:8000 --visitors 100 --speed 30
+
+# Against live Render deployment
+python -m pipeline.simulate --store-id STORE_BLR_002 --api-url https://purplle-store-intelligence-17fl.onrender.com --visitors 50 --speed 10
 ```
 
 #### **5. Launch the Terminal TUI Dashboard**
 ```bash
-python -m dashboard.terminal_dashboard --store-id STORE_PRP_001 --api-url http://localhost:8000
+# Against local server
+python -m dashboard.terminal_dashboard --store-id STORE_BLR_002 --api-url http://localhost:8000
+
+# Against live Render deployment
+python -m dashboard.terminal_dashboard --store-id STORE_BLR_002 --api-url https://purplle-store-intelligence-17fl.onrender.com
+
+# Force HTTP-polling fallback (no WebSocket)
+DASHBOARD_MODE=TUI python -m dashboard.terminal_dashboard --store-id STORE_BLR_002 --api-url https://purplle-store-intelligence-17fl.onrender.com
 ```
 
 #### **6. Run the test suite**
@@ -634,10 +660,11 @@ pytest -v --cov=app --cov=pipeline
 
 The Store Intelligence System is built to win hackathons and enterprise evaluations alike:
 
-1. **Production-Ready from Day One:** Features comprehensive error handling (e.g., 503 database fallbacks), transaction idempotency, and automated test coverage.
-2. **Resource-Efficient Architecture:** Intelligent frame-skipping and CPU-optimized Re-ID allow the platform to run on standard, low-cost hardware.
-3. **Visually Stunning Terminal UI:** The interactive terminal dashboard immediately captures attention, making metrics clear and accessible without a browser.
-4. **Actionable Retail Insights:** Built around key business objectives (conversion rates, funnel leakage, queue management) to deliver clear operational value.
+1. **Production-Ready and Deployed:** Live on Render with managed PostgreSQL, multi-stage Docker build, structured logs, and automated health checks — not just a local demo.
+2. **Resource-Efficient Architecture:** Intelligent frame-skipping and CPU-optimized Hybrid Re-ID allow the platform to run on standard, low-cost hardware.
+3. **Resilient by Design:** Kafka + Redis Streams fallback with exponential-backoff retry ensures zero event loss during broker outages without manual intervention.
+4. **Visually Stunning Terminal UI:** The interactive terminal dashboard immediately captures attention, making metrics clear and accessible without a browser.
+5. **Actionable Retail Insights:** Built around key business objectives (conversion rates, funnel leakage, queue management) to deliver clear operational value.
 
 ---
 
@@ -645,8 +672,8 @@ The Store Intelligence System is built to win hackathons and enterprise evaluati
 
 * **Upgrade to YOLOv10 / RT-DETR:** Incorporating the latest object-detection architectures to further reduce latency and improve edge performance.
 * **Database-Side Aggregations:** Shifting funnel calculations from memory-based Python logic to optimized SQL subqueries for multi-store scale.
-* **Real-time WebSocket Feeds:** Migrating the Live TUI Dashboard from HTTP polling to continuous WebSocket streams to reduce network overhead.
-* **Live Camera Feeds:** Adding native support for RTSP video streams to process live retail security cameras.
+* **Live Camera Feeds:** Adding native support for RTSP video streams to process live retail security cameras in real-time.
+* **Grafana Dashboard:** Exposing PostgreSQL metrics to a hosted Grafana instance for richer time-series visualizations alongside the TUI.
 
 ---
 
@@ -656,21 +683,27 @@ The Store Intelligence System is built to win hackathons and enterprise evaluati
 **A:** We use ByteTrack's dual-pass matching system. Even if a customer is temporarily occluded, their track is kept active at a lower confidence threshold rather than being immediately discarded.
 
 #### **Q: Can I run this system without a GPU?**
-**A:** Yes! Thanks to our adaptive frame-skipping ($5\text{fps}$ effective) and lightweight LAB Re-ID algorithm, the entire pipeline runs smoothly on standard multi-core CPUs.
+**A:** Yes! Thanks to our adaptive frame-skipping ($5\text{fps}$ effective) and lightweight Hybrid HSV + LAB Re-ID algorithm, the entire pipeline runs smoothly on standard multi-core CPUs.
 
 #### **Q: Are customer face images stored in the database?**
 **A:** No. The visual pipeline processes frames locally at the edge. Only anonymous spatial coordinates and color histograms are extracted, keeping customer identities private.
+
+#### **Q: What happens if the Kafka broker goes down?**
+**A:** The ingestion engine automatically falls back to Redis Streams via `aioredis` after 3 exponential-backoff retry attempts. The response includes a `bus` field indicating which transport was used (`"kafka"` or `"redis"`).
 
 ---
 
 ## 23. Lessons Learned
 
-1. **Lightweight CV Algorithms Win on the Edge:** While heavy deep-learning Re-ID models are highly accurate, lightweight math-based features (like LAB color histograms) deliver $90\%$ of the performance at $1\%$ of the compute cost.
-2. **Prioritize Edge-Case Testing:** Retail environments are full of anomalies (e.g., groups entering together, staff moving between areas, re-entries). Testing these edge-cases early ensures high system reliability.
-3. **Structured Logging is Essential:** In complex, multi-service systems (CV nodes, API gateways, database transactions), structured JSON logs with trace IDs save hours of debugging time.
+1. **Lightweight CV Algorithms Win on the Edge:** While heavy deep-learning Re-ID models are highly accurate, a hybrid HSV + LAB approach delivers $90\%$ of the performance at $1\%$ of the compute cost — and doubles as a staff classifier.
+2. **Design for Bus Failure from Day One:** Adding a Redis Streams fallback after the fact is painful. Building the retry + fallback loop into the initial ingestion handler costs one afternoon and saves hours of production incidents.
+3. **Structured Logging is Essential:** In complex, multi-service systems (CV nodes, API gateways, message buses, database transactions), structured JSON logs with trace IDs save hours of debugging time.
 
 ---
 
 <p align="center">
-  Developed with ❤️ for the <strong>Purplle Tech Challenge 2026</strong>.
+   For the <strong>Purplle Tech Challenge 2026</strong>.<br/>
+  <a href="https://purplle-store-intelligence-17fl.onrender.com/docs">Live API Docs</a> ·
+  <a href="https://github.com/riddhisharma-sudo/purplle-Store-intelligence">GitHub Repo</a>
 </p>
+
