@@ -2,40 +2,34 @@
   "stores": [
     {
       "store_id": "STORE_PRP_001",
-      "name": "Purplle Store - Mall Location",
+      "name": "Purplle Store 1 - Mall Location",
       "city": "Mumbai",
       "open_hours": { "open": "10:00", "close": "22:00" },
 
       "cameras": [
         {
           "camera_id": "CAM_ENTRY_01",
-          "source_file": "CAM 3.mp4",
+          "source_file": "CAM 3 - entry.mp4",
           "type": "entry",
-          "description": "Entry/exit glass door threshold — camera mounted high-left inside store looking toward glass door"
+          "description": "Entry/exit glass door — camera mounted high-left inside store looking down at glass door threshold. Purplle backlit signage left. Mall corridor visible through glass on right."
         },
         {
           "camera_id": "CAM_FLOOR_01",
-          "source_file": "CAM 1.mp4",
+          "source_file": "CAM 1 - zone.mp4",
           "type": "floor",
-          "description": "Main floor skincare section — overhead camera covers The Face Shop / Good Vibes / Derma product wall"
+          "description": "Skincare wall — top/back wall: Farmstay, The Face Shop, Good Vibes, Derma Co, Minimalist, Aqualogy, DERMDOC. Round fragrance/nail island display in foreground. Makeup trial unit visible at right edge."
         },
         {
           "camera_id": "CAM_FLOOR_02",
-          "source_file": "CAM 2.mp4",
+          "source_file": "CAM 2 - zone.mp4",
           "type": "floor",
-          "description": "Main floor makeup section — wide-angle covering Lakme / FacesCanada / Maybelline / Swiss Beauty"
+          "description": "Makeup/cosmetics wall — bottom/front wall: Alps, L'Oreal, 6Mars, Swiss Beauty, Lakme, FacesCanada, Maybelline. Makeup trial unit left side. Accessories display top-left corner."
         },
         {
           "camera_id": "CAM_BILLING_01",
-          "source_file": "CAM 5.mp4",
+          "source_file": "CAM 5 - billing.mp4",
           "type": "billing",
-          "description": "Billing counter / POS terminal area — laptop and cash register visible"
-        },
-        {
-          "camera_id": "CAM_BACK_01",
-          "source_file": "CAM 4.mp4",
-          "type": "floor",
-          "description": "Stockroom / back office — staff-only zone with Purplle inventory boxes"
+          "description": "Billing counter — laptop/POS desk left-center. Stockroom with inventory boxes in background center. 55-inch LED Accessories display panel on right."
         }
       ],
 
@@ -47,203 +41,217 @@
           "sku_zone": null,
           "polygon": [[0,0],[1920,0],[1920,1080],[0,1080]],
           "entry_line": {
-            "p1": [620, 0],
-            "p2": [620, 1080],
-            "inside_sign": 1,
-            "description": "Vertical line at glass door. Left (x<620) = inside store; Right (x>620) = mall corridor outside."
+            "p1": [660, 0],
+            "p2": [660, 1080],
+            "inside_sign": -1,
+            "description": "Glass door frame visible center-frame. Left of line (x<660) = outside mall corridor; Right (x>660) = inside store. Camera looks down from inside so corridor is on the right side of frame."
           }
         },
 
         {
           "zone_id": "SKINCARE",
-          "name": "Skincare & Face Care",
+          "name": "Skincare & Face Care Wall",
           "camera_id": "CAM_FLOOR_01",
           "sku_zone": "MOISTURISER",
-          "polygon": [[960,0],[1920,0],[1920,1080],[960,1080]],
-          "description": "Right wall: product shelf area with skincare brands"
-        },
-        {
-          "zone_id": "BROWSING_FLOOR_01",
-          "name": "Skincare Browsing Aisle",
-          "camera_id": "CAM_FLOOR_01",
-          "sku_zone": "MOISTURISER",
-          "polygon": [[0,0],[960,0],[960,1080],[0,1080]],
-          "description": "Left/centre: customer standing area in front of skincare shelves"
-        },
-
-        {
-          "zone_id": "MAKEUP",
-          "name": "Makeup & Cosmetics",
-          "camera_id": "CAM_FLOOR_02",
-          "sku_zone": "FOUNDATION",
-          "polygon": [[1100,0],[1920,0],[1920,1080],[1100,1080]],
-          "description": "Right third: Lakme, FacesCanada, Maybelline shelf wall"
-        },
-        {
-          "zone_id": "HAIRCARE",
-          "name": "Hair Care & Styling",
-          "camera_id": "CAM_FLOOR_02",
-          "sku_zone": "SHAMPOO",
-          "polygon": [[0,0],[550,0],[550,1080],[0,1080]],
-          "description": "Left edge: hair care product section"
-        },
-        {
-          "zone_id": "FRAGRANCE",
-          "name": "Fragrance & Body",
-          "camera_id": "CAM_FLOOR_02",
-          "sku_zone": "PERFUME",
-          "polygon": [[550,0],[1100,0],[1100,1080],[550,1080]],
-          "description": "Middle band of floor 02: fragrance and body care products"
-        },
-
-        {
-          "zone_id": "BILLING",
-          "name": "Billing Counter",
-          "camera_id": "CAM_BILLING_01",
-          "sku_zone": null,
-          "is_billing": true,
-          "polygon": [[0,180],[900,180],[900,950],[0,950]],
-          "description": "Left-centre: POS terminal, laptop, billing desk"
-        },
-        {
-          "zone_id": "BILLING_QUEUE",
-          "name": "Billing Queue Area",
-          "camera_id": "CAM_BILLING_01",
-          "sku_zone": null,
-          "polygon": [[900,0],[1920,0],[1920,1080],[900,1080]],
-          "description": "Right side of billing camera: customer waiting / accessories display area"
-        },
-
-        {
-          "zone_id": "STOCKROOM",
-          "name": "Stockroom / Back Office",
-          "camera_id": "CAM_BACK_01",
-          "sku_zone": null,
-          "is_staff_zone": true,
-          "polygon": [[0,0],[1920,0],[1920,1080],[0,1080]],
-          "description": "Full frame: inventory storage with Purplle boxes. Staff-only — any person here classified is_staff=True."
-        }
-      ],
-
-      "camera_overlaps": [
-        {
-          "camera1": "CAM_ENTRY_01",
-          "camera2": "CAM_FLOOR_01",
-          "zone_id": "ENTRY_FLOOR_OVERLAP",
-          "description": "Store entry vestibule visible at the far edge of CAM_FLOOR_01",
-          "polygon": [[0,0],[100,0],[100,1080],[0,1080]]
-        }
-      ],
-
-      "staff_uniform_colors": {
-        "description": "Staff wear dark black outfits (observed across all cameras). Primary detection by very low HSV brightness.",
-        "ranges": [
-          { "lower_hsv": [0, 0, 0],   "upper_hsv": [180, 255, 60] }
-        ]
-      }
-    },
-
-    {
-      "store_id": "STORE_BLR_002",
-      "pos_store_id": "ST1008",
-      "name": "Purplle — Brigade Road, Bangalore",
-      "city": "Bangalore",
-      "open_hours": { "open": "10:00", "close": "22:00" },
-
-      "cameras": [
-        {
-          "camera_id": "CAM_ENTRY_01",
-          "source_file": "CAM 3.mp4",
-          "type": "entry",
-          "description": "Entry/exit glass door — camera inside store facing main entrance"
-        },
-        {
-          "camera_id": "CAM_FLOOR_01",
-          "source_file": "CAM 1.mp4",
-          "type": "floor",
-          "description": "Main floor — skincare wall (DERMDOC, Good Vibes, COSRX, Round Lab)"
-        },
-        {
-          "camera_id": "CAM_FLOOR_02",
-          "source_file": "CAM 2.mp4",
-          "type": "floor",
-          "description": "Main floor — makeup section (Faces Canada, NY Bae, Lakme, Maybelline)"
-        },
-        {
-          "camera_id": "CAM_BILLING_01",
-          "source_file": "CAM 5.mp4",
-          "type": "billing",
-          "description": "Billing counter / POS terminal — laptop and cash register"
-        },
-        {
-          "camera_id": "CAM_BACK_01",
-          "source_file": "CAM 4.mp4",
-          "type": "floor",
-          "description": "Back section — haircare, personal care, fragrance (Alps Goodness, Carmesi)"
-        }
-      ],
-
-      "zones": [
-        {
-          "zone_id": "ENTRY",
-          "name": "Store Entry / Exit Threshold",
-          "camera_id": "CAM_ENTRY_01",
-          "sku_zone": null,
-          "polygon": [[0,0],[1920,0],[1920,1080],[0,1080]],
-          "entry_line": {
-            "p1": [620, 0],
-            "p2": [620, 1080],
-            "inside_sign": 1,
-            "description": "Vertical line at glass door. Left (x<620) = inside store."
-          }
-        },
-        {
-          "zone_id": "SKINCARE",
-          "name": "Skincare & Face Care",
-          "camera_id": "CAM_FLOOR_01",
-          "sku_zone": "MOISTURISER",
-          "polygon": [[960,0],[1920,0],[1920,1080],[960,1080]],
-          "description": "Right wall: DERMDOC, Good Vibes, COSRX, Foxtale, Beauty of Joseon"
+          "polygon": [[300,0],[1920,0],[1920,700],[300,700]],
+          "description": "Top/back wall shelves: Farmstay, The Face Shop, Good Vibes, Derma Co, Minimalist, Aqualogy, DERMDOC. Multi-tier shelf unit running full wall width."
         },
         {
           "zone_id": "SKINCARE_AISLE",
           "name": "Skincare Browsing Aisle",
           "camera_id": "CAM_FLOOR_01",
           "sku_zone": "MOISTURISER",
-          "polygon": [[0,0],[960,0],[960,1080],[0,1080]],
-          "description": "Browsing area in front of skincare wall"
+          "polygon": [[0,400],[1920,400],[1920,1080],[0,1080]],
+          "description": "Floor standing area in front of skincare wall. Includes round fragrance/nail island display (center-bottom). Where customers physically stand while browsing skincare."
         },
         {
+          "zone_id": "FRAGRANCE_ISLAND",
+          "name": "Fragrance & Nail Island Display",
+          "camera_id": "CAM_FLOOR_01",
+          "sku_zone": "PERFUME",
+          "polygon": [[300,550],[800,550],[800,1080],[300,1080]],
+          "description": "Round tiered island display unit in center of skincare aisle — Fragrance and Nail Foundation products. Visible bottom-center of CAM 1."
+        },
+        {
+          "zone_id": "MAKEUP_TRIAL_CAM1",
+          "name": "Makeup Trial Unit (Skincare Camera Side)",
+          "camera_id": "CAM_FLOOR_01",
+          "sku_zone": "FOUNDATION",
+          "polygon": [[1400,300],[1920,300],[1920,1080],[1400,1080]],
+          "description": "Makeup trial station visible at right edge of CAM 1. White unit with mirror and seating. Overlaps with CAM_FLOOR_02 coverage — Re-ID deduplication required."
+        },
+
+        {
           "zone_id": "MAKEUP",
-          "name": "Makeup & Cosmetics",
+          "name": "Makeup & Cosmetics Wall",
           "camera_id": "CAM_FLOOR_02",
           "sku_zone": "FOUNDATION",
-          "polygon": [[1100,0],[1920,0],[1920,1080],[1100,1080]],
-          "description": "Right section: Faces Canada, NY Bae, Lakme, Maybelline, Swiss Beauty"
+          "polygon": [[300,0],[1920,0],[1920,700],[300,700]],
+          "description": "Bottom/front wall shelves: Alps, L'Oreal, 6Mars, Swiss Beauty, Lakme, FacesCanada, Maybelline. High-density makeup SKU wall."
         },
         {
           "zone_id": "MAKEUP_AISLE",
           "name": "Makeup Browsing Aisle",
           "camera_id": "CAM_FLOOR_02",
           "sku_zone": "FOUNDATION",
-          "polygon": [[550,0],[1100,0],[1100,1080],[550,1080]],
-          "description": "Central aisle: Concealer, Lipstick, Foundation testing area"
+          "polygon": [[400,400],[1920,400],[1920,1080],[400,1080]],
+          "description": "Floor standing area in front of makeup wall. Central aisle where customers browse cosmetics and interact with staff."
         },
         {
-          "zone_id": "HAIRCARE",
-          "name": "Hair Care & Styling",
-          "camera_id": "CAM_BACK_01",
-          "sku_zone": "SHAMPOO",
-          "polygon": [[0,0],[640,0],[640,1080],[0,1080]],
-          "description": "Left section: Alps Goodness, Bare Anatomy, GUBB hair products"
+          "zone_id": "MAKEUP_TRIAL",
+          "name": "Makeup Trial Unit",
+          "camera_id": "CAM_FLOOR_02",
+          "sku_zone": "FOUNDATION",
+          "polygon": [[0,300],[500,300],[500,1080],[0,1080]],
+          "description": "White makeup trial unit with mirror — left side of CAM 2. Customer tries makeup products here with staff assistance. High-dwell zone."
         },
         {
-          "zone_id": "PERSONAL_CARE",
-          "name": "Personal Care & Fragrance",
-          "camera_id": "CAM_BACK_01",
-          "sku_zone": "DEODORANT",
-          "polygon": [[640,0],[1280,0],[1280,1080],[640,1080]],
-          "description": "Centre: Carmesi razors, GUBB grooming, deodorants and fragrances"
+          "zone_id": "ACCESSORIES",
+          "name": "Accessories Display",
+          "camera_id": "CAM_FLOOR_02",
+          "sku_zone": "ACCESSORIES",
+          "polygon": [[0,0],[300,0],[300,400],[0,400]],
+          "description": "Top-left corner of CAM 2: Accessories product section visible near entry side of store."
+        },
+
+        {
+          "zone_id": "BILLING",
+          "name": "Billing Counter",
+          "camera_id": "CAM_BILLING_01",
+          "sku_zone": null,
+          "is_billing": true,
+          "polygon": [[0,200],[750,200],[750,950],[0,950]],
+          "description": "POS terminal / billing desk — laptop, barcode scanner, cash register. Staff stands behind counter. Customer faces counter from in-store side."
+        },
+        {
+          "zone_id": "BILLING_QUEUE",
+          "name": "Billing Queue / Customer Wait Area",
+          "camera_id": "CAM_BILLING_01",
+          "sku_zone": null,
+          "polygon": [[750,200],[1300,200],[1300,1080],[750,1080]],
+          "description": "Center area in front of billing counter — where customers queue. Also contains some floor stock visible in footage."
+        },
+        {
+          "zone_id": "ACCESSORIES_LED",
+          "name": "Accessories & LED Display Wall",
+          "camera_id": "CAM_BILLING_01",
+          "sku_zone": "ACCESSORIES",
+          "polygon": [[1300,0],[1920,0],[1920,1080],[1300,1080]],
+          "description": "Right side of billing camera: large 55-inch LED panel showing accessories products. High-visibility display adjacent to billing counter."
+        },
+        {
+          "zone_id": "STOCKROOM",
+          "name": "Stockroom / Back Office",
+          "camera_id": "CAM_BILLING_01",
+          "sku_zone": null,
+          "is_staff_zone": true,
+          "polygon": [[550,0],[1300,0],[1300,250],[550,250]],
+          "description": "Background area behind billing desk — inventory boxes, back office. Visible through gap in center-background of CAM 5. Any person detected here is auto-classified is_staff=True."
+        }
+      ],
+
+      "camera_overlaps": [
+        {
+          "camera1": "CAM_FLOOR_01",
+          "camera2": "CAM_FLOOR_02",
+          "zone_id": "MAKEUP_TRIAL_OVERLAP",
+          "description": "The makeup trial unit is visible at the right edge of CAM_FLOOR_01 and left edge of CAM_FLOOR_02. Re-ID deduplication required for any person tracked in this region across both cameras.",
+          "polygon": [[0,300],[400,300],[400,1080],[0,1080]]
+        }
+      ],
+
+      "staff_uniform_colors": {
+        "description": "Staff wear dark black outfits — confirmed visible in all cameras. Primary detection by very low HSV brightness (V channel).",
+        "ranges": [
+          { "lower_hsv": [0, 0, 0], "upper_hsv": [180, 255, 60] }
+        ]
+      }
+    },
+
+    {
+      "store_id": "STORE_002",
+      "pos_store_id": "ST1008",
+      "name": "Purplle Store 2",
+      "city": "Mumbai",
+      "open_hours": { "open": "10:00", "close": "22:00" },
+
+      "cameras": [
+        {
+          "camera_id": "CAM_ENTRY_01",
+          "source_file": "entry 1.mp4",
+          "type": "entry",
+          "description": "Left entry glass panel — camera mounted inside store watching left glazing section (4132mm wide). Primary customer entry flow."
+        },
+        {
+          "camera_id": "CAM_ENTRY_02",
+          "source_file": "entry 2.mp4",
+          "type": "entry",
+          "description": "Right entry glass panel — camera mounted inside store watching right glazing section (4052mm wide). Secondary entry point."
+        },
+        {
+          "camera_id": "CAM_FLOOR_01",
+          "source_file": "zone.mp4",
+          "type": "floor",
+          "description": "Main FOH floor — wide-angle covering diagonal MK_GONDOLA shelves (left) and MAKEUP_UNIT station cluster (right). Cash counter visible in background."
+        },
+        {
+          "camera_id": "CAM_BILLING_01",
+          "source_file": "billing_area.mp4",
+          "type": "billing",
+          "description": "Cash counter / billing area — POS terminal, 65-inch LED screen overhead. Covers billing desk and customer queue area."
+        }
+      ],
+
+      "zones": [
+        {
+          "zone_id": "ENTRY_LEFT",
+          "name": "Left Entry / Exit Threshold",
+          "camera_id": "CAM_ENTRY_01",
+          "sku_zone": null,
+          "polygon": [[0,0],[1920,0],[1920,1080],[0,1080]],
+          "entry_line": {
+            "p1": [640, 0],
+            "p2": [640, 1080],
+            "inside_sign": 1,
+            "description": "Left glass door. Left of line (x<640) = inside store; Right (x>640) = entrance corridor."
+          }
+        },
+        {
+          "zone_id": "ENTRY_RIGHT",
+          "name": "Right Entry / Exit Threshold",
+          "camera_id": "CAM_ENTRY_02",
+          "sku_zone": null,
+          "polygon": [[0,0],[1920,0],[1920,1080],[0,1080]],
+          "entry_line": {
+            "p1": [640, 0],
+            "p2": [640, 1080],
+            "inside_sign": 1,
+            "description": "Right glass door. Left of line (x<640) = inside store."
+          }
+        },
+        {
+          "zone_id": "GONDOLA_ZONE",
+          "name": "Gondola Floor Display",
+          "camera_id": "CAM_FLOOR_01",
+          "sku_zone": "GENERAL_DISPLAY",
+          "polygon": [[0,200],[800,200],[800,1080],[0,1080]],
+          "description": "Left section: two diagonal MK_GONDOLA-1 and MK_GONDOLA-2 freestanding display shelves."
+        },
+        {
+          "zone_id": "FLOOR_CENTER",
+          "name": "Central Browsing Aisle",
+          "camera_id": "CAM_FLOOR_01",
+          "sku_zone": null,
+          "polygon": [[800,200],[1200,200],[1200,1080],[800,1080]],
+          "description": "Central walkway between gondola area and makeup stations. Customer transit and dwell zone."
+        },
+        {
+          "zone_id": "MAKEUP_ZONE",
+          "name": "Makeup Trial & Display Station",
+          "camera_id": "CAM_FLOOR_01",
+          "sku_zone": "MAKEUP",
+          "polygon": [[1200,200],[1920,200],[1920,1080],[1200,1080]],
+          "description": "Right section: 2x4 cluster of MAKEUP_UNIT stations with seating. High-engagement trial zone."
         },
         {
           "zone_id": "BILLING",
@@ -251,25 +259,25 @@
           "camera_id": "CAM_BILLING_01",
           "sku_zone": null,
           "is_billing": true,
-          "polygon": [[0,180],[900,180],[900,950],[0,950]],
-          "description": "POS terminal — Brigade store has 3 active salespersons at peak"
+          "polygon": [[200,150],[1300,150],[1300,900],[200,900]],
+          "description": "Central cash counter / POS terminal. 65-inch LED screen mounted overhead."
         },
         {
           "zone_id": "BILLING_QUEUE",
           "name": "Billing Queue Area",
           "camera_id": "CAM_BILLING_01",
           "sku_zone": null,
-          "polygon": [[900,0],[1920,0],[1920,1080],[900,1080]],
-          "description": "Customer waiting area near billing counter"
+          "polygon": [[1300,0],[1920,0],[1920,1080],[1300,1080]],
+          "description": "Right side of billing camera: customer waiting area near counter."
         },
         {
-          "zone_id": "STOCKROOM",
-          "name": "Stockroom / Back Office",
-          "camera_id": "CAM_BACK_01",
+          "zone_id": "BOH",
+          "name": "Back of House / Stockroom",
+          "camera_id": "CAM_BILLING_01",
           "sku_zone": null,
           "is_staff_zone": true,
-          "polygon": [[1280,0],[1920,0],[1920,1080],[1280,1080]],
-          "description": "Staff-only inventory area. Any person here auto-classified is_staff=True."
+          "polygon": [[0,0],[1920,0],[1920,150],[0,150]],
+          "description": "Top strip of billing camera: B.O.H area with slotted angle racks. Any person here auto-classified is_staff=True."
         }
       ],
 
@@ -277,18 +285,17 @@
         {
           "camera1": "CAM_ENTRY_01",
           "camera2": "CAM_FLOOR_01",
-          "zone_id": "ENTRY_FLOOR_OVERLAP",
-          "description": "Entry vestibule visible at far edge of CAM_FLOOR_01",
-          "polygon": [[0,0],[100,0],[100,1080],[0,1080]]
+          "zone_id": "ENTRY_FLOOR_OVERLAP_LEFT",
+          "description": "Left entry vestibule may be partially visible at bottom-left of floor camera.",
+          "polygon": [[0,900],[200,900],[200,1080],[0,1080]]
+        },
+        {
+          "camera1": "CAM_ENTRY_02",
+          "camera2": "CAM_FLOOR_01",
+          "zone_id": "ENTRY_FLOOR_OVERLAP_RIGHT",
+          "description": "Right entry vestibule may be partially visible at bottom-right of floor camera.",
+          "polygon": [[1720,900],[1920,900],[1920,1080],[1720,1080]]
         }
-      ],
-
-      "staff_salespersons": [
-        {"employee_code": "CL2063", "name": "kasthuri v"},
-        {"employee_code": "CL2727", "name": "Zufishan Khazra"},
-        {"employee_code": "CL1997", "name": "Shashikala"},
-        {"employee_code": "CL2680", "name": "Priya v"},
-        {"employee_code": "CL2541", "name": "Naziya Begum"}
       ],
 
       "staff_uniform_colors": {

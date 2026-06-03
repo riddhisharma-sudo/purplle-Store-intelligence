@@ -255,17 +255,33 @@ class StoreTracker:
 
     def _handle_lost_tracks(self, active_ids: set[int], now: datetime, _frame: np.ndarray) -> None:
         lost = [tid for tid in list(self._tracks) if tid not in active_ids]
+
         for tid in lost:
             state = self._tracks[tid]
-            if state.entered_store:
-                self._handle_exit(state, now, conf=state.staff_confidence or 0.5)
+
+        # Only entry cameras should generate store EXIT events
+            if self._zone_mapper.has_entry_line:
+                if state.entered_store:
+                    self._handle_exit(state, now, conf=state.staff_confidence or 0.5)
+                else:
+                    self._reid.retire_track(tid)
+                    del self._tracks[tid]
+
+        # Floor/billing cameras: track disappeared ≠ customer left store
             else:
                 self._reid.retire_track(tid)
                 del self._tracks[tid]
 
+
     def flush_sessions(self) -> None:
-        """Emit EXIT for all still-active tracks at end of clip."""
+   
+
+    # Only entry camera should force EXITs at clip end
+        if not self._zone_mapper.has_entry_line:
+            return
+
         now = datetime.now(tz=timezone.utc)
+
         for state in list(self._tracks.values()):
             if state.entered_store:
                 self._handle_exit(state, now, conf=0.5)

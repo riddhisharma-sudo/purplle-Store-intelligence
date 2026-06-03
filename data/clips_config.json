@@ -1,57 +1,91 @@
 {
-  "_comment": "Maps each CCTV clip filename to its store, camera role, and recording start time. All clips are from STORE_PRP_001, recorded simultaneously on 10 April 2026 at ~20:09-20:13 IST (UTC+5:30).",
+  "_comment": "Maps each CCTV clip to its store, camera role, and recording start time. OSD timestamps extracted from actual footage frames.",
 
   "stores": [
     {
       "store_id": "STORE_PRP_001",
-      "clips_dir": "CCTV Footage",
+      "clips_dir": "Store 1",
 
       "clips": [
         {
-          "filename": "CAM 3.mp4",
+          "filename": "CAM 3 - entry.mp4",
           "camera_id": "CAM_ENTRY_01",
           "camera_type": "entry",
           "clip_start_time": "2026-04-10T20:09:50+05:30",
           "fps_override": null,
           "frame_skip": 6,
-          "notes": "Entry/exit threshold. Glass door at x≈620. Process FIRST so ENTRY events anchor sessions before floor events arrive."
+          "notes": "Entry/exit glass door. Camera looks DOWN from inside store at entry threshold. Entry line at x=660 — left of line is mall corridor (outside), right is inside store. Process FIRST so ENTRY events anchor sessions before floor events arrive. OSD: 10/04/2026 20:09:50 visible in CAM 5 (closest timestamp anchor)."
         },
         {
-          "filename": "CAM 1.mp4",
+          "filename": "CAM 1 - zone.mp4",
           "camera_id": "CAM_FLOOR_01",
           "camera_type": "floor",
-          "clip_start_time": "2026-04-10T20:10:27+05:30",
+          "clip_start_time": "2026-04-10T20:10:29+05:30",
           "fps_override": null,
           "frame_skip": 6,
-          "notes": "Main floor skincare section. OSD timestamp visible: 10/04/2026 20:10:27."
+          "notes": "Skincare wall — top/back wall of store. Farmstay, TFS, Good Vibes, Derma Co, Minimalist, Aqualogy, DERMDOC. Round fragrance/nail island display in foreground. OSD confirmed: 10/04/2026 20:10:29."
         },
         {
-          "filename": "CAM 2.mp4",
+          "filename": "CAM 2 - zone.mp4",
           "camera_id": "CAM_FLOOR_02",
           "camera_type": "floor",
-          "clip_start_time": "2026-04-10T20:10:02+05:30",
+          "clip_start_time": "2026-04-10T20:10:05+05:30",
           "fps_override": null,
           "frame_skip": 6,
-          "notes": "Main floor makeup/cosmetics section. OSD visible: 10/04/2026 20:10:02."
+          "notes": "Makeup/cosmetics wall — bottom/front wall of store. Alps, L'Oreal, 6Mars, Swiss Beauty, Lakme, FacesCanada, Maybelline. Makeup trial unit left side. Overlaps with CAM_FLOOR_01 at makeup trial unit area — Re-ID deduplication active. OSD confirmed: 10/04/2026 20:10:05."
         },
         {
-          "filename": "CAM 5.mp4",
+          "filename": "CAM 5 - billing.mp4",
           "camera_id": "CAM_BILLING_01",
           "camera_type": "billing",
-          "clip_start_time": "2026-04-10T20:09:48+05:30",
+          "clip_start_time": "2026-04-10T20:09:50+05:30",
           "fps_override": null,
           "frame_skip": 6,
-          "notes": "Billing counter POS area. Process after floor cameras."
+          "notes": "Billing counter with laptop/POS. Stockroom with inventory boxes visible center-background (is_staff_zone). 55-inch LED Accessories display panel on right side of frame. Process after floor cameras. OSD confirmed: 10/04/2026 20:09:50."
+        }
+      ]
+    },
+
+    {
+      "store_id": "STORE_002",
+      "clips_dir": "Store 2",
+
+      "clips": [
+        {
+          "filename": "entry 1.mp4",
+          "camera_id": "CAM_ENTRY_01",
+          "camera_type": "entry",
+          "clip_start_time": "2026-06-01T22:37:00+05:30",
+          "fps_override": null,
+          "frame_skip": 6,
+          "notes": "Left entry glass panel. Entry line at x=640 — tune after first pipeline run. Process FIRST. Primary entry camera — most customer traffic expected here."
         },
         {
-          "filename": "CAM 4.mp4",
-          "camera_id": "CAM_BACK_01",
-          "camera_type": "floor",
-          "clip_start_time": "2026-04-10T20:09:45+05:30",
+          "filename": "entry 2.mp4",
+          "camera_id": "CAM_ENTRY_02",
+          "camera_type": "entry",
+          "clip_start_time": "2026-06-01T22:37:00+05:30",
           "fps_override": null,
           "frame_skip": 6,
-          "force_is_staff": true,
-          "notes": "Stockroom / back office. Anyone detected here is classified is_staff=True regardless of uniform colour."
+          "notes": "Right entry glass panel. Secondary entry point. Entry line at x=640 — adjust independently if right panel geometry differs from left."
+        },
+        {
+          "filename": "zone.mp4",
+          "camera_id": "CAM_FLOOR_01",
+          "camera_type": "floor",
+          "clip_start_time": "2026-06-01T22:34:00+05:30",
+          "fps_override": null,
+          "frame_skip": 6,
+          "notes": "Main FOH floor. Covers GONDOLA_ZONE (left), FLOOR_CENTER (middle), MAKEUP_ZONE (right). Process after entry cameras."
+        },
+        {
+          "filename": "billing_area.mp4",
+          "camera_id": "CAM_BILLING_01",
+          "camera_type": "billing",
+          "clip_start_time": "2026-06-01T22:34:00+05:30",
+          "fps_override": null,
+          "frame_skip": 6,
+          "notes": "Cash counter / POS area. BOH staff-only zone visible at very top of frame (y<150) — persons in this strip auto-classified is_staff=True. Process after floor camera."
         }
       ]
     }
