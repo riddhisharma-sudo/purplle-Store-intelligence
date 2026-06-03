@@ -603,7 +603,7 @@ curl "http://localhost:8000/stores/STORE_002/metrics?date=2026-06-01"
 curl https://purplle-store-intelligence-17fl.onrender.com/health
 curl "https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_PRP_001/metrics?date=2026-04-10"
 curl "https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_002/metrics?date=2026-06-01"
-
+```
 ---
 
 ### **Manual Local Installation (For Development & Testing)**
@@ -680,10 +680,7 @@ python -m pipeline.load_pos \
   --api-url http://localhost:8000
 ```
 
-#### **4b. Run the customer event simulator** *(no clips needed)*
-```bash
-# Against local server
-python -m pipeline.simulate --store-id STORE_BLR_002 --layout data/store_layout.json --api-url http://localhost:8000 --visitors 100 --speed 30
+
 
 
 #### **4b. Run the customer event simulator** *(no clips needed)*
@@ -779,5 +776,5 @@ The Store Intelligence System is built to win hackathons and enterprise evaluati
 </p>
 
 
-</p>
+
 
