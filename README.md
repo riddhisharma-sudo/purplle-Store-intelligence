@@ -517,11 +517,7 @@ We treat privacy as a core engineering requirement:
 
 | Evaluation Criterion | Implementation Details | Evidence in Codebase |
 |---|---|---|
-<<<<<<< HEAD
-| **Functional Completeness** | End-to-end flow from raw video to live terminal dashboard is fully operational and deployed. | [detect.py](pipeline/detect.py), [main.py](app/main.py), [terminal_dashboard.py](dashboard/terminal_dashboard.py) |
-=======
-| **Functional Completeness** | End-to-end flow from raw video to live terminal dashboard is fully operational and deployed. Validated against both Store 1 and Store 2 footage. | [detect.py](pipeline/detect.py), [main.py](app/main.py), [terminal_dashboard.py](dashboard/terminal_dashboard.py) |
->>>>>>> 4934f2c (Final Purplle Round 2 submission)
+| **Functional Completeness** | End-to-end flow from raw video to live terminal dashboard is fully operational and deployed. Validated against both Store 1 and Store 2 footage. | [detect.py](pipeline/detect.py), [main.py](app/main.py), [terminal_dashboard.py](dashboard/terminal_dashboard.py) 
 | **Code Coverage** | Comprehensive automated test suite ensuring correct metric calculations, funnel operations, and health checks. | Enforced at $>70\%$ in [pytest.ini](pytest.ini) |
 | **Edge-Case Resilience** | System handles empty stores, zero transactions, employee filtering, Kafka outages, and re-entry tracking without breaking. | [test_ingestion.py](tests/test_ingestion.py), [test_metrics.py](tests/test_metrics.py) |
 | **Production Readiness** | Structured logging with trace IDs, graceful error handling, multi-stage Docker build, deployed on Render with managed PostgreSQL. | [logging_config.py](app/logging_config.py), [Dockerfile.api](Dockerfile.api), [railway.toml](railway.toml) |
@@ -665,10 +661,8 @@ Clips are mapped to camera roles via `data/clips_config.json`. The system suppor
 ```bash
 pip install -r requirements-pipeline.txt
 
-<<<<<<< HEAD
-=======
 # Run Store 1
->>>>>>> 4934f2c (Final Purplle Round 2 submission)
+
 python -m pipeline.detect \
   --clips-config data/clips_config.json \
   --clips-dir "Store 1" \
@@ -677,8 +671,7 @@ python -m pipeline.detect \
   --output events_store1.jsonl \
   --conf 0.35
 
-<<<<<<< HEAD
-=======
+
 # Run Store 2
 python -m pipeline.detect \
   --clips-config data/clips_config.json \
@@ -690,7 +683,7 @@ python -m pipeline.detect \
 
 # Load POS transactions — supports Purplle POS CSV format.
 # ST1008 is automatically remapped to STORE_BLR_002.
->>>>>>> 4934f2c (Final Purplle Round 2 submission)
+
 python -m pipeline.load_pos \
   --csv "POS - sample transactions.csv" \
   --api-url http://localhost:8000
@@ -701,21 +694,20 @@ python -m pipeline.load_pos \
 # Against local server
 python -m pipeline.simulate --store-id STORE_BLR_002 --layout data/store_layout.json --api-url http://localhost:8000 --visitors 100 --speed 30
 
-<<<<<<< HEAD
+
 #### **4b. Run the customer event simulator** *(no clips needed)*
 ```bash
 # Against local server
 python -m pipeline.simulate --store-id STORE_BLR_002 --layout data/store_layout.json --api-url http://localhost:8000 --visitors 100 --speed 30
 
-=======
->>>>>>> 4934f2c (Final Purplle Round 2 submission)
+
 # Against live Render deployment
 python -m pipeline.simulate --store-id STORE_BLR_002 --api-url https://purplle-store-intelligence-17fl.onrender.com --visitors 50 --speed 10
 ```
 
 #### **5. Launch the Terminal TUI Dashboard**
 ```bash
-<<<<<<< HEAD
+
 # Against local server
 python -m dashboard.terminal_dashboard --store-id STORE_BLR_002 --api-url http://localhost:8000
 
@@ -724,7 +716,7 @@ python -m dashboard.terminal_dashboard --store-id STORE_BLR_002 --api-url https:
 
 # Force HTTP-polling fallback (no WebSocket)
 DASHBOARD_MODE=TUI python -m dashboard.terminal_dashboard --store-id STORE_BLR_002 --api-url https://purplle-store-intelligence-17fl.onrender.com
-=======
+
 # Store 1
 python -m dashboard.terminal_dashboard --store-id STORE_PRP_001 --api-url http://localhost:8000
 
@@ -733,7 +725,7 @@ python -m dashboard.terminal_dashboard --store-id STORE_002 --api-url http://loc
 
 # Against live Render deployment
 python -m dashboard.terminal_dashboard --store-id STORE_PRP_001 --api-url https://purplle-store-intelligence-17fl.onrender.com
->>>>>>> 4934f2c (Final Purplle Round 2 submission)
+
 ```
 
 #### **6. Run the test suite**
@@ -792,9 +784,9 @@ The Store Intelligence System is built to win hackathons and enterprise evaluati
    For the <strong>Purplle Tech Challenge 2026</strong>.<br/>
   <a href="https://purplle-store-intelligence-17fl.onrender.com/docs">Live API Docs</a> ·
   <a href="https://github.com/riddhisharma-sudo/purplle-Store-intelligence">GitHub Repo</a>
-<<<<<<< HEAD
+
 </p>
 
-=======
+
 </p>
 >>>>>>> 4934f2c (Final Purplle Round 2 submission)
