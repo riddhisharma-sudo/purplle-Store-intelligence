@@ -18,12 +18,8 @@ The **Store Intelligence System** is an enterprise-grade, edge-to-cloud analytic
 | **API Root** | https://purplle-store-intelligence-17fl.onrender.com |
 | **Interactive Docs** | https://purplle-store-intelligence-17fl.onrender.com/docs |
 | **Health Check** | https://purplle-store-intelligence-17fl.onrender.com/health |
-<<<<<<< HEAD
-| **Store Metrics** | https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_BLR_002/metrics |
-=======
 | **Store 1 Metrics** | https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_PRP_001/metrics?date=2026-04-10 |
 | **Store 2 Metrics** | https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_002/metrics?date=2026-06-01 |
->>>>>>> 4934f2c (Final Purplle Round 2 submission)
 
 ---
 
