@@ -596,13 +596,6 @@ docker compose attach dashboard
 ```bash
 # Local
 curl http://localhost:8000/health
-<<<<<<< HEAD
-curl "http://localhost:8000/stores/STORE_BLR_002/metrics"
-
-# Live Render deployment
-curl https://purplle-store-intelligence-17fl.onrender.com/health
-curl "https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_BLR_002/metrics"
-=======
 curl "http://localhost:8000/stores/STORE_PRP_001/metrics?date=2026-04-10"
 curl "http://localhost:8000/stores/STORE_002/metrics?date=2026-06-01"
 
@@ -610,8 +603,6 @@ curl "http://localhost:8000/stores/STORE_002/metrics?date=2026-06-01"
 curl https://purplle-store-intelligence-17fl.onrender.com/health
 curl "https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_PRP_001/metrics?date=2026-04-10"
 curl "https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_002/metrics?date=2026-06-01"
->>>>>>> 4934f2c (Final Purplle Round 2 submission)
-```
 
 ---
 
@@ -789,4 +780,4 @@ The Store Intelligence System is built to win hackathons and enterprise evaluati
 
 
 </p>
->>>>>>> 4934f2c (Final Purplle Round 2 submission)
+
