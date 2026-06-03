@@ -25,10 +25,10 @@ The **Store Intelligence System** is an enterprise-grade, edge-to-cloud analytic
 ## 📸 Screenshots
 
 ### Web Dashboard
-![Web Dashboard](docs/screenshots/web_dashboard.png)
+![Web Dashboard](dashboard/screenshots/web_dashboard.png)
 
 ### Terminal Dashboard
-![Terminal Dashboard](docs/screenshots/terminal_dashboard.png)
+![Terminal Dashboard](dashboard/screenshots/terminal_dashboard.png)
 
 ---
 ## 🗺️ Table of Contents
