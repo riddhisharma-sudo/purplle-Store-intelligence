@@ -22,7 +22,15 @@ The **Store Intelligence System** is an enterprise-grade, edge-to-cloud analytic
 | **Store 2 Metrics** | https://purplle-store-intelligence-17fl.onrender.com/stores/STORE_002/metrics?date=2026-06-01 |
 
 ---
+## 📸 Screenshots
 
+### Web Dashboard
+![Web Dashboard](docs/screenshots/web_dashboard.png)
+
+### Terminal Dashboard
+![Terminal Dashboard](docs/screenshots/terminal_dashboard.png)
+
+---
 ## 🗺️ Table of Contents
 
 1. [The Problem](#1-the-problem)
